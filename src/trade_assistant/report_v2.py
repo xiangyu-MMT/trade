@@ -68,7 +68,7 @@ def render(run):
                       plots["basis" + prefix], '<p class="muted">持仓量加权 · 正数升水，负数贴水 · 截至 ', escape(b.get("asof") or "待取得"), '</p></section>'])
     parts.extend(['</div><h2>候选重点 · 最强三项</h2><p class="muted">',
                   escape(selection["label"]), '。相对强弱不表示已经适合交易。</p><div class="three">',
-                  ''.join(card(ident) for ident in selection["overall_top3"]), '</div><p class="ma">K线 · MA5日 / MA20日淡色参考 · 下方为同时间轴成交量</p>'])
+                  ''.join(card(ident) for ident in selection["overall_top3"]), '</div><p class="ma">K线 · 图表默认显示MA20日 · 下方为同时间轴成交量</p>'])
     for group in selection["groups"]:
         if group["asset_ids"]:
             parts.extend(['<h2>', escape(group["title"]), '</h2><div class="grid">', ''.join(card(ident) for ident in group["asset_ids"]), '</div>'])

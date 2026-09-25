@@ -9,6 +9,8 @@ const stances = {candidate:'可关注方向',observe:'观察',wait:'等待'};
 let state = {knowledge:[],confirmed_knowledge:[],plans:[],confirmed_plans:[],executions:[],reviews:[],runs:[]};
 let currentRun = null, configInfo = null, view = 'overview';
 const chartPeriods = Object.create(null);
+const chartMaChoices = Object.create(null);
+const maColors = {5:'#b5ac86',20:'#94b4cd',60:'#b39fc3',120:'#9fbfac'};
 let aiInfo = null;
 let followLatest = true, stateSignature = '', editorSubmit = null, activeJob = null, loading = false, knowledgeFilter = 'all';
 const watchedJobs = new Set();
@@ -148,6 +150,46 @@ function marketIndicatorsPanel() {
 }
 
 function cardPeriod(id) { return chartPeriods[id]||'daily'; }
+function displayMAs(id) {
+  if(!Object.hasOwn(chartMaChoices,id)){
+    let saved;try{saved=JSON.parse(localStorage.getItem('p03.chart.ma.'+id));}catch(_){}
+    chartMaChoices[id]=Array.isArray(saved)&&saved.every(x=>[5,20,60,120].includes(x))?[...new Set(saved)].sort((a,b)=>a-b):[20];
+  }
+  return chartMaChoices[id];
+}
+function maControls(id) {
+  const selected=displayMAs(id);
+  return `<div class="ma-options" role="group" aria-label="均线显示">${[5,20,60,120].map(p=>`<label style="--ma-color:${maColors[p]}"><input type="checkbox" data-ma-id="${esc(id)}" data-ma-period="${p}" ${selected.includes(p)?'checked':''}><span>MA${p}日</span></label>`).join('')}</div>`;
+}
+function displayMaLegend(id) {
+  return displayMAs(id).map(p=>`<span style="color:${maColors[p]}">MA${p}日</span>`).join(' · ')||'均线已隐藏';
+}
+function chartSVG(item,period) {
+  const tech=item.technical||{},daily=tech.bars||[],source=period==='weekly'?(tech.weekly||[]):daily;
+  if(source.length<2)return '<p class="small muted">暂无足够K线资料</p>';
+  const bars=source.slice(-65),offset=source.length-bars.length,mas={};
+  for(const p of displayMAs(item.asset_id)){
+    let sum=0;const byDate=new Map();daily.forEach((b,i)=>{sum+=b.close;if(i>=p)sum-=daily[i-p].close;byDate.set(b.date,i+1>=p?sum/p:null);});
+    mas[p]=source.map(b=>byDate.get(b.date)??null).slice(offset);
+  }
+  const values=bars.flatMap(b=>[b.high,b.low]).concat(Object.values(mas).flat().filter(v=>typeof v==='number'));
+  let lo=Math.min(...values),hi=Math.max(...values),span=hi-lo||hi*.01||1;lo-=span*.06;hi+=span*.06;
+  const step=560/bars.length,x=i=>56+step*(i+.5),y=v=>170-(v-lo)/(hi-lo)*145,vmax=Math.max(...bars.map(b=>b.volume||0),1),width=Math.max(2,Math.min(8,step*.6));
+  let shapes=[0,.5,1].map(t=>{const v=lo+(hi-lo)*t;return `<path d="M52 ${y(v)}H620" stroke="#e6ede7"/><text x="47" y="${y(v)+3}" text-anchor="end" fill="#7b8b80" font-size="10">${esc(short(v))}</text>`;}).join('');
+  for(const [p,series] of Object.entries(mas)){
+    let path='',connected=false;series.forEach((v,i)=>{if(v==null){connected=false;return;}path+=(connected?'L':'M')+x(i).toFixed(1)+' '+y(v).toFixed(1)+' ';connected=true;});
+    if(path)shapes+=`<path data-ma="${p}" d="${path}" fill="none" stroke="${maColors[p]}" stroke-width="1.2" opacity=".75"><title>MA${p}日</title></path>`;
+  }
+  bars.forEach((b,i)=>{const color=b.close>=b.open?'#bf6356':'#388674',tip=`${b.date} 开${num(b.open)} 高${num(b.high)} 低${num(b.low)} 收${num(b.close)} 量${short(b.volume)}`;
+    shapes+=`<g><title>${esc(tip)}</title><path d="M${x(i)} ${y(b.high)}V${y(b.low)}" stroke="${color}"/><rect x="${x(i)-width/2}" y="${Math.min(y(b.open),y(b.close))}" width="${width}" height="${Math.max(1,Math.abs(y(b.open)-y(b.close)))}" fill="${color}"/>`;
+    if(typeof b.volume==='number'&&b.volume>=0){const h=b.volume/vmax*45;shapes+=`<rect x="${x(i)-width/2}" y="${238-h}" width="${width}" height="${h}" fill="${color}" opacity=".55"/>`;}
+    shapes+='</g>';
+  });
+  return `<svg viewBox="0 0 640 270" role="img" aria-label="${period==='weekly'?'周':'日'}K线、可选均线与成交量">${shapes}<path d="M52 181H620M52 239H620" stroke="#dce6de"/><text x="5" y="199" fill="#7b8b80" font-size="10">成交量</text><text x="53" y="259" fill="#7b8b80" font-size="10">${esc(bars[0].date)}</text><text x="546" y="259" fill="#7b8b80" font-size="10">${esc(bars[bars.length-1].date)}</text></svg>`;
+}
+function repaintChartCard(card,item,focusSelector) {
+  if(!card)return;const wrapper=document.createElement('div');wrapper.innerHTML=candidateCard(item);const replacement=wrapper.firstElementChild;card.replaceWith(replacement);replacement.querySelector(focusSelector)?.focus({preventScroll:true});
+}
 function chartToggle(id,period) {
   return `<div class="period-switch" role="group" aria-label="图表周期"><button type="button" data-action="card-period" data-id="${esc(id)}" data-period="daily" aria-pressed="${period==='daily'}">日线</button><button type="button" data-action="card-period" data-id="${esc(id)}" data-period="weekly" aria-pressed="${period==='weekly'}">周线</button></div>`;
 }
@@ -156,7 +198,7 @@ function candidateCard(item) {
   const forming=period==='weekly'?tech.weekly?.slice(-1)[0]?.forming:tech.forming;
   const read=ai?.volume_price_reading||v.summary||'量价历史不足';
   const strength=ai?.strength_reason||ai?.reason||'当前仅提供程序量价事实';
-  return `<article class="card candidate-card" data-asset-id="${esc(item.asset_id)}" data-chart-period="${period}"><div class="title-line"><h3>${esc(item.name)}</h3>${ai?pill(ai.stance):'<span class="pill neutral">量价参考</span>'}</div><div class="card-chart-tools"><span class="small muted">${esc(tech.asof||'缺历史')}${forming?' · 形成中':''}</span>${chartToggle(item.asset_id,period)}</div><div class="candle-chart">${currentRun.charts?.[item.asset_id]?.[period]||'<p>图表未取得</p>'}</div><div class="ma-legend"><span>MA5日</span><span>MA20日</span>${period==='weekly'?'<small>周K结束日取样</small>':''}</div><div class="volume-insight">${esc(cut(read,100))}</div><p>${esc(cut(strength,100))}</p>${ai?.against?.[0]?`<p class="counterpoint">留意：${esc(cut(ai.against[0],75))}</p>`:''}<div class="toolbar">${button('查看依据','candidate-detail',`data-id="${esc(item.asset_id)}"`)}${button('拟定计划','draft-plan',`data-id="${esc(item.asset_id)}"`,!ai||Boolean(activeJob))}</div></article>`;
+  return `<article class="card candidate-card" data-asset-id="${esc(item.asset_id)}" data-chart-period="${period}"><div class="title-line"><h3>${esc(item.name)}</h3>${ai?pill(ai.stance):'<span class="pill neutral">量价参考</span>'}</div><div class="card-chart-tools"><span class="small muted">${esc(tech.asof||'缺历史')}${forming?' · 形成中':''}</span>${chartToggle(item.asset_id,period)}</div><div class="candle-chart">${chartSVG(item,period)}</div>${maControls(item.asset_id)}<div class="volume-insight">${esc(cut(read,100))}</div><p>${esc(cut(strength,100))}</p>${ai?.against?.[0]?`<p class="counterpoint">留意：${esc(cut(ai.against[0],75))}</p>`:''}<div class="toolbar">${button('查看依据','candidate-detail',`data-id="${esc(item.asset_id)}"`)}${button('拟定计划','draft-plan',`data-id="${esc(item.asset_id)}"`,!ai||Boolean(activeJob))}</div></article>`;
 }
 
 function coveragePanel() {
@@ -182,7 +224,7 @@ function marginTable() {
 function renderCandidates() {
   if(!currentRun?.facts)return emptyReport();
   const p=currentRun.presentation||{},visible=(p.groups||[]).reduce((n,g)=>n+g.asset_ids.length,0);
-  return `${runChooser()}<div class="section-title"><div><h2>候选与依据</h2><p class="small muted">已分析 ${p.analyzed_count||0} 项 · 常规展示 ${visible} 项 · ${esc(p.label||'等待排序')}</p></div></div><div class="ma-legend"><span>MA5日</span><span>MA20日</span><small>悬停蜡烛可看对应日期开高低收与量</small></div>${(p.groups||[]).filter(g=>g.asset_ids.length).map(g=>`<section class="candidate-group"><div class="section-title"><h2>${esc(g.title)}</h2><span class="small muted">${g.asset_ids.length} 项</span></div><div class="candidate-grid">${g.asset_ids.map(factItem).filter(Boolean).map(candidateCard).join('')}</div></section>`).join('')}<p class="small muted">成交额前十行业实际分析 ${p.dynamic_analyzed||0} 项，只展示其中最强三项；固定关注保留，同一对象合并展示。完整分析记录保存在本轮历史中。</p>${coveragePanel()}`;
+  return `${runChooser()}<div class="section-title"><div><h2>候选与依据</h2><p class="small muted">已分析 ${p.analyzed_count||0} 项 · 常规展示 ${visible} 项 · ${esc(p.label||'等待排序')}</p></div></div>${(p.groups||[]).filter(g=>g.asset_ids.length).map(g=>`<section class="candidate-group"><div class="section-title"><h2>${esc(g.title)}</h2><span class="small muted">${g.asset_ids.length} 项</span></div><div class="candidate-grid">${g.asset_ids.map(factItem).filter(Boolean).map(candidateCard).join('')}</div></section>`).join('')}<p class="small muted">成交额前十行业实际分析 ${p.dynamic_analyzed||0} 项，只展示其中最强三项；固定关注保留，同一对象合并展示。完整分析记录保存在本轮历史中。</p>${coveragePanel()}`;
 }
 
 function planCard(p) {
@@ -231,7 +273,7 @@ function openEditor(title,body,submit=null,label='保存') {
 }
 function candidateDetail(id) {
   const item=factItem(id);if(!item)return;const a=opinion(id),t=item.technical||{},v=item.volume_price||{},last=t.latest||{};
-  openEditor(item.name,`<div class="candle-chart">${currentRun.charts?.[id]?.[cardPeriod(id)]||''}</div><div class="ma-legend"><span>MA5日</span><span>MA20日</span></div><h3>量价理解</h3><p>${esc(a?.volume_price_reading||v.summary||'资料不足')}</p><p class="small muted">比较截至 ${esc(v.asof||'未知')} ${v.current_forming?'（当前日线形成中，比较使用最近完整日）':''}</p><h3>综合强弱</h3><p>${esc(a?.strength_reason||a?.reason||'未获得AI综合解读')}</p><div class="metric-chips"><span>前5日量比 ${num(v.volume_vs_5)}×</span><span>前20日量比 ${num(v.volume_vs_20)}×</span><span>20日涨幅 ${num(v.return_20d_pct)}%</span></div><details><summary>逻辑、模式与反证</summary><div>${list(a?.logic_refs?.map(knowledgeName))}${list(a?.mode_refs?.map(knowledgeName))}${list(a?.against)}${list(a?.missing)}${list(v.missing)}</div></details><details><summary>辅助指标、原始依据与来源</summary><div><p class="small">MACD DIF ${num(last.dif)} / DEA ${num(last.dea)} · OBV ${short(last.obv)} · CCI ${num(last.cci)}</p>${list(a?.evidence_refs?.map(evidenceName))}<p class="small muted">${esc(t.adjustment||'')} · ${esc(t.volume_unit||'')} · ${esc(t.source||'')}</p>${list(t.reasons)}</div></details>`);
+  openEditor(item.name,`<div class="candle-chart">${chartSVG(item,cardPeriod(id))}</div><div class="small muted">${displayMaLegend(id)}</div><h3>量价理解</h3><p>${esc(a?.volume_price_reading||v.summary||'资料不足')}</p><p class="small muted">比较截至 ${esc(v.asof||'未知')} ${v.current_forming?'（当前日线形成中，比较使用最近完整日）':''}</p><h3>综合强弱</h3><p>${esc(a?.strength_reason||a?.reason||'未获得AI综合解读')}</p><div class="metric-chips"><span>前5日量比 ${num(v.volume_vs_5)}×</span><span>前20日量比 ${num(v.volume_vs_20)}×</span><span>20日涨幅 ${num(v.return_20d_pct)}%</span></div><details><summary>逻辑、模式与反证</summary><div>${list(a?.logic_refs?.map(knowledgeName))}${list(a?.mode_refs?.map(knowledgeName))}${list(a?.against)}${list(a?.missing)}${list(v.missing)}</div></details><details><summary>辅助指标、原始依据与来源</summary><div><p class="small">MACD DIF ${num(last.dif)} / DEA ${num(last.dea)} · OBV ${short(last.obv)} · CCI ${num(last.cci)}</p>${list(a?.evidence_refs?.map(evidenceName))}<p class="small muted">${esc(t.adjustment||'')} · ${esc(t.volume_unit||'')} · ${esc(t.source||'')}</p>${list(t.reasons)}</div></details>`);
 }
 
 function planDetail(id) {
@@ -277,7 +319,7 @@ async function action(target) {
     if(!item||!['daily','weekly'].includes(period))return;
     chartPeriods[id]=period;
     const card=target.closest('.candidate-card');
-    if(card){const wrapper=document.createElement('div');wrapper.innerHTML=candidateCard(item);const replacement=wrapper.firstElementChild;card.replaceWith(replacement);replacement.querySelector(`[data-period="${period}"]`).focus({preventScroll:true});}
+    repaintChartCard(card,item,`[data-period="${period}"]`);
     return;
   }
   if(target.dataset.action==='go-plans'){view='plans';render();return;}
@@ -345,7 +387,12 @@ document.addEventListener('click',async event=>{
 document.addEventListener('change',async event=>{
   const target=event.target;
   try{
-    if(target.id==='auto-refresh'){
+    if(target.dataset.maId){
+      const id=target.dataset.maId,p=Number(target.dataset.maPeriod),item=factItem(id);if(!item||![5,20,60,120].includes(p))return;
+      const selected=new Set(displayMAs(id));target.checked?selected.add(p):selected.delete(p);chartMaChoices[id]=[...selected].sort((a,b)=>a-b);
+      try{localStorage.setItem('p03.chart.ma.'+id,JSON.stringify(chartMaChoices[id]));}catch(_){}
+      repaintChartCard(target.closest('.candidate-card'),item,`[data-ma-period="${p}"]`);
+    }else if(target.id==='auto-refresh'){
       const c=await api('/api/config');if(!c.config)throw new Error('请先修复配置。');c.config.auto_refresh=target.checked;await api('/api/config','PUT',{config:c.config});configInfo=c;await loadState(true);
     }else if(target.id==='run-select'){
       followLatest=target.value==='latest';const id=followLatest?state.latest_report_id:target.value;

@@ -4,7 +4,7 @@ import math
 
 from .indicators import sma
 
-PALETTE = {5: "#b5ac86", 20: "#94b4cd"}
+PALETTE = {5: "#b5ac86", 20: "#94b4cd", 60: "#b39fc3", 120: "#9fbfac"}
 UP, DOWN = "#bf6356", "#388674"
 
 
@@ -20,14 +20,16 @@ def fmt(value):
     return "%.2f" % value
 
 
-def candles(technical, period="daily", count=65):
+def candles(technical, period="daily", count=65, display_ma=(20,)):
     source = technical.get("weekly" if period == "weekly" else "bars", [])
     if len(source) < 2:
         return '<p class="muted small">暂无足够的真实K线资料</p>'
     daily = technical.get("bars", [])
     daily_closes = [b["close"] for b in daily]
     mas = {}
-    for p in PALETTE:
+    for p in display_ma:
+        if p not in PALETTE:
+            continue
         by_date = dict(zip((b["date"] for b in daily), sma(daily_closes, p)))
         mas[p] = [by_date.get(b["date"]) for b in source]
     bars = source[-count:]
