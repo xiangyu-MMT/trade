@@ -72,3 +72,7 @@ App启动时强制auto_refresh=false，移入会话运行状态；本机配置�
 - Codex命令：https://learn.chatgpt.com/docs/developer-commands
 - DeepSeek接口：https://api-docs.deepseek.com/api/create-chat-completion/
 - 交易所统计字段核实线索：AKShare官方stock_summary.py对应公开接口及交易所实际返回；不引入其依赖包。
+
+## I2 实现落实
+
+本设计已完成代码实现，最终提交ad09f607d2ad35ebbd2b3cbe4f1bfd7f0ee1db93，见TASK-007及原始自检I2。新增report_v2.py承载报告布局，report.py保持公开入口；共享图表与候选选择规则。免费交易所历史实际补齐25日，含ST口径始终与严格统计分开；上交所TRADE_AMT单位已从其官方search_stockData_2021.js的“成交金额(亿元)”字段映射核实。DeepSeek未取得用户密钥，真实API调用未验证，不记为已通过。
