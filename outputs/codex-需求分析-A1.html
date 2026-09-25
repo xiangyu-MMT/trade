@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>P03 trade｜需求分析 A1</title>
+<style>
+:root{--ink:#173337;--muted:#506368;--bg:#f5f7f5;--line:#dce5df;--green:#14684e;--pale:#edf5ee;--gold:#7b551d;--cream:#fff6e6}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.75 -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif}main{max-width:1080px;margin:auto;padding:36px 28px}a{color:var(--green);text-underline-offset:4px}button{font:inherit;cursor:pointer}button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid #dbaa45;outline-offset:4px}header{margin-bottom:25px}.meta{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:12px;letter-spacing:1px;color:var(--green);font-weight:700}.badge{padding:3px 10px;border-radius:99px;background:var(--cream);color:var(--gold);font-size:12px;letter-spacing:0}h1{font-size:clamp(27px,4vw,37px);line-height:1.4;letter-spacing:-.7px;margin:16px 0 12px}h2{font-size:23px;margin:0 0 12px}h3{font-size:17px;margin:0 0 8px}p{margin:0 0 12px}.lead{color:var(--muted);max-width:850px}.facts{display:grid;grid-template-columns:repeat(4,1fr);gap:11px;margin:23px 0}.fact{padding:16px;border:1px solid var(--line);border-radius:13px;background:#fff}.fact small{display:block;color:var(--muted);font-size:12px}.fact strong{display:block;font-size:18px;margin-top:5px}.recommend{padding:17px 19px;background:var(--pale);border-left:3px solid var(--green);border-radius:0 12px 12px 0;margin:20px 0}.recommend p:last-child{margin-bottom:0}.tabs{display:flex;gap:6px;background:#eaf0ea;padding:6px;border-radius:13px;margin:24px 0 14px;border:1px solid var(--line)}.tab{flex:1;border:0;border-radius:8px;padding:10px;color:var(--muted);background:transparent;white-space:nowrap}.tab[aria-selected=true]{background:#fff;color:var(--green);font-weight:700;box-shadow:0 2px 6px #19352a0a}.panel{background:#fff;border:1px solid var(--line);border-radius:17px;padding:27px}.panel[hidden]{display:none}.small{font-size:13px;color:var(--muted)}.scopes{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:18px 0}.scope{padding:19px;border:1px solid var(--line);border-radius:12px}.scope:first-child{background:#f2f6fb;border-color:#dce6f0}.scope:last-child{background:#f3f8f2}.scope p{font-size:14px}.scope p:last-child{margin:0}.label{font-size:11px;letter-spacing:1.5px;color:var(--muted);margin-bottom:7px}.merge{text-align:center;margin:8px 0 17px;color:var(--green);font-weight:700}.loop{display:flex;gap:9px;flex-wrap:wrap}.node{flex:1;min-width:130px;border:1px solid var(--line);background:var(--bg);padding:11px;border-radius:9px;text-align:center;font-size:14px}.arrow{align-self:center;color:#6f8579}.table-wrap{overflow:auto}table{border-collapse:collapse;width:100%;margin:15px 0;font-size:14px}th,td{text-align:left;padding:12px 11px;border-bottom:1px solid var(--line);vertical-align:top}th{font-weight:600;color:var(--muted);background:var(--bg)}.first{white-space:nowrap;width:15%}details{border-top:1px solid var(--line);padding-top:14px;margin-top:18px}summary{font-weight:600;cursor:pointer}details>div{padding-top:13px}.chips{display:flex;gap:7px;flex-wrap:wrap}.chip{padding:3px 9px;background:var(--bg);border:1px solid var(--line);border-radius:99px;font-size:12px}.decisions{display:grid;gap:14px;margin:18px 0}.decision{border:1px solid var(--line);border-radius:13px;padding:18px 20px}.decision .id{font-size:12px;color:var(--green);font-weight:700;letter-spacing:1px}.decision h3{margin-top:5px}.decision p:last-child{margin-bottom:0}.sign{background:var(--cream);padding:18px 20px;border-radius:12px;color:#56431e}.sign blockquote{margin:11px 0 0;padding-left:13px;border-left:3px solid #c39a47;font-weight:600}.risk{border-left:3px solid #be9550;background:#fff9ee;padding:16px 18px;border-radius:0 10px 10px 0}.bullets{padding-left:21px}.bullets li{margin:7px 0}.source{font-size:12px}.footer{font-size:12px;color:var(--muted);padding:20px 3px 0}.footer a{margin-right:14px}.footer p{margin:6px 0}@media(max-width:720px){main{padding:24px 15px}.facts{grid-template-columns:1fr 1fr}.scopes{grid-template-columns:1fr}.panel{padding:20px 16px}.tabs{flex-wrap:wrap}.tab{flex:1 1 40%;padding:8px}.arrow{display:none}.node{min-width:42%}.decision{padding:16px}th,td{padding:10px 8px}h2{font-size:21px}}@media print{body{background:white}main{padding:0}.tabs{display:none}.panel[hidden]{display:block}.panel{margin:18px 0;break-inside:avoid}.facts,.decision{break-inside:avoid}details>div{display:block}a{color:inherit}}
+</style>
+</head>
+<body><main>
+<header>
+<div class="meta"><span>P03 / TRADE · 需求分析 A1 · 2026-09-25</span><span class="badge">A1 已签字 · D1–D3 已同意</span></div>
+<h1>观察全市场，在配置范围内寻找机会</h1>
+<p class="lead">基于 REQ-001 R11。程序提供可复算的数据与指标，Codex 按你的交易档案解释，计划经你确认后执行，复盘再进入档案。</p>
+<div class="facts"><div class="fact"><small>触发方式</small><strong>按钮 + 每小时</strong></div><div class="fact"><small>技术判断</small><strong>日线主 · 周线辅</strong></div><div class="fact"><small>计划持有</small><strong>几天至几周</strong></div><div class="fact"><small>交易执行</small><strong>由你操作</strong></div></div>
+<div class="recommend"><p><strong>A1 已获签，REQ-001 R11 已准许拆任务。</strong>先落实免费数据和档案基础，再接入指标、Codex 推导、计划复盘与界面。完整字段覆盖仍待实际接口核实。<a href="codex-任务卡总览-T1.html">查看任务卡 T1 审阅页</a>。</p></div>
+</header>
+<div class="tabs" role="tablist" aria-label="需求分析主题">
+<button class="tab" id="tab-scope" type="button" role="tab" aria-selected="true" aria-controls="scope">范围与流程</button>
+<button class="tab" id="tab-work" type="button" role="tab" aria-selected="false" aria-controls="work" tabindex="-1">拆解建议</button>
+<button class="tab" id="tab-decide" type="button" role="tab" aria-selected="false" aria-controls="decide" tabindex="-1">三项已确认</button>
+<button class="tab" id="tab-evidence" type="button" role="tab" aria-selected="false" aria-controls="evidence" tabindex="-1">事实与风险</button>
+</div>
+<section class="panel" id="scope" role="tabpanel" aria-labelledby="tab-scope">
+<h2>市场背景与候选分析，分别取得足够依据</h2>
+<div class="scopes">
+<div class="scope"><div class="label">市场观察范围</div><h3>沪深 A 股全市场</h3><p>统计剔除北交所和 ST。观察涨跌家数、量能、涨跌停与封板、行业资金和涨跌、融资及 ETF 份额变化。</p><p>同时观察美元、美债、黄金、石油、10 年 TIPS 等外部环境。</p></div>
+<div class="scope"><div class="label">候选分析范围</div><h3>动态前 10 + 固定关注项</h3><p>当日累计成交额前 10 的行业板块，加煤炭、银行、电力、工业金属和八项指数。</p><p>配置文件可增补板块、宽基和个股；重复候选合并，保留入选理由。</p></div>
+</div>
+<div class="merge">两类数据共同支撑当轮判断 ↓</div>
+<div class="loop"><div class="node">程序计算</div><span class="arrow">→</span><div class="node">Codex 读取档案并解释</div><span class="arrow">→</span><div class="node">你确认计划并执行</div><span class="arrow">→</span><div class="node">回填、复盘、更新档案</div></div>
+<p class="small" style="margin-top:12px">流程示意；当前尚未实现运行系统。正式分析正文覆盖 F01–F11 共 11 项能力。</p>
+<details><summary>八项指数与四层职责</summary><div>
+<div class="chips"><span class="chip">上证 50</span><span class="chip">沪深 300</span><span class="chip">中证 500</span><span class="chip">中证 1000</span><span class="chip">中证 2000</span><span class="chip">创业板</span><span class="chip">创业板 50</span><span class="chip">科创板 50</span></div>
+<div class="table-wrap"><table><thead><tr><th class="first">层面</th><th>系统要完成的事</th></tr></thead><tbody>
+<tr><td>逻辑</td><td>引用你熟悉的五类逻辑及后续确认的定义，说明交易出发点和证据。</td></tr>
+<tr><td>技术</td><td>计算 5/20/60/120 日均线、OBV、MACD、CCI，解读趋势和全市场盘面结构。</td></tr>
+<tr><td>模式</td><td>结合盘面与外部环境解释市场状态、策略适配及分歧；模式定义持续归档。</td></tr>
+<tr><td>计划</td><td>系统先拟、你确认或直接记录；执行由你回填，复盘修订经你确认后归档。</td></tr>
+</tbody></table></div>
+<p class="small">计划字段：标的、逻辑/技术/模式依据、买入条件、退出条件、仓位与风险限制、有效期。</p>
+</div></details>
+<details><summary>触发、刷新与计划保护的建议</summary><div>
+<ul class="bullets"><li>手动按钮和运行时每小时刷新触发完整分析轮次，运行中显示进度，避免重复覆盖。</li><li>盘前或休市使用最近可用交易日并标明日期；未收盘日线、周线显示“形成中”。</li><li>系统退出或设备休眠后，周期更新随服务可用性停止；恢复时先获取最新数据。</li><li>小时刷新可提出计划修订，已确认计划的事前内容与依据保持可追溯。</li><li>Codex 暂时不可用时保留程序数据和历史报告，当轮解读明确显示失败。</li></ul>
+<p class="small">以上是 A1 的业务表现建议。具体实现方式在后续技术设计中确定。</p>
+</div></details>
+<details><summary>首页展示与本期边界</summary><div>
+<p>首页突出市场判断、少量候选、计划提醒和关键图表；完整数据与推导按需展开。数据截至时间和分析生成时间分别显示。</p>
+<p>按钮与周期运行需要本地服务支持；某一轮的自包含 HTML 可独立查看。目标为联网 Mac/Windows 电脑，行情免费、AI 使用现有 Codex 会员。</p>
+<p class="small">本期无自动下单和券商交易权限。全历史回测、模型训练、全量研报库、手机专用界面尚未纳入；多机自动同步见 D3。</p>
+</div></details>
+</section>
+<section class="panel" id="work" role="tabpanel" aria-labelledby="tab-work" hidden>
+<h2>建议按六个工作包推进</h2>
+<p>每个工作包都对应可核实的交付结果。A1 已获签，已据此编写 TASK-001～TASK-006，当前均为 T1 待签字。</p>
+<div class="table-wrap"><table><thead><tr><th class="first">顺序</th><th>目标</th><th>关键依赖与结果</th></tr></thead><tbody>
+<tr><td>W1</td><td><strong>配置与免费数据</strong></td><td>核对候选标识、来源与字段；取回真实数据并记录覆盖和缺口。</td></tr>
+<tr><td>W2</td><td><strong>交易知识档案</strong></td><td>逻辑、技术、模式可新增、确认、修订；历史引用原版本。</td></tr>
+<tr><td>W3</td><td><strong>指标与全市场结构</strong></td><td>依赖 W1/W2；按正确范围计算，附数据时点和统计口径。</td></tr>
+<tr><td>W4</td><td><strong>Codex 推导与筛选</strong></td><td>依赖 W1–W3；给出候选、分歧或等待，保存依据与原始输出。</td></tr>
+<tr><td>W5</td><td><strong>计划、执行与复盘</strong></td><td>依赖档案和推导；连接人工确认、回填、偏差和知识修订。</td></tr>
+<tr><td>W6</td><td><strong>页面与运行入口</strong></td><td>整合按钮、每小时刷新、简洁 HTML 图表及 Mac/Windows 使用。</td></tr>
+</tbody></table></div>
+<div class="recommend"><p><strong>先 W1 的理由：</strong>全市场免费数据的覆盖和口径决定后续判断能做到什么程度。W2 的资料整理可在数据权限待落实时推进，后续任务仍需核对自己的前置结果。</p></div>
+<p class="small">正式测试用例、测试执行与独立验收由小步在实现获签后承担。当前任务卡 T1 待签字，尚无实现或正式测试结果，也没有可靠工期估算。</p>
+</section>
+<section class="panel" id="decide" role="tabpanel" aria-labelledby="tab-decide" hidden>
+<h2>三项取舍，已随 A1 确认</h2>
+<p>翔宇已明确同意全部 Codex 建议及 D1–D3。以下保留获签内容，签字原话与登记时间见本节末。</p>
+<div class="decisions">
+<article class="decision"><div class="id">D1 / 实际交易标的</div><h3>由你指定要买卖的 ETF 或个股</h3><p>板块或指数结论先形成方向级观察计划。未配置实际品种时明确标注待补充，系统不擅自选择同名基金。</p><p class="small">如果希望自动挑选对应品种，需要增加选择与评价规则。</p></article>
+<article class="decision"><div class="id">D2 / 依据不足与判断分歧</div><h3>保留观察、等待或待补充草案</h3><p>展示支持证据、反证和数据缺口；允许模式多侧面并存。关键计划字段不填无依据数值，已确认计划的修订由你决定。</p><p class="small">免费来源会先尽力补齐；标注缺失不等于该判断已经具备完整依据。</p></article>
+<article class="decision"><div class="id">D3 / 多设备档案</div><h3>首期本地保存，文件可以迁移</h3><p>支持在 Mac 或 Windows 运行，首期不自动同步多台设备的档案。若需要云端同步，应增加相应范围和冲突处理。</p></article>
+</div>
+<div class="sign"><strong>已登记翔宇签字：</strong><blockquote>Codex 建议都同意。通过 A1，同意 D1–D3，允许将 P03 REQ-001 R11 拆任务。</blockquote><p class="small" style="margin-top:11px">登记时间：2026-09-25 14:02:04（Asia/Shanghai）。对象为 A1、D1–D3 及准许拆分的 P03 REQ-001 R11。任务卡 T1 需另行签字。</p></div>
+</section>
+<section class="panel" id="evidence" role="tabpanel" aria-labelledby="tab-evidence" hidden>
+<h2>可推进，但有几项前提需要落实</h2>
+<div class="risk"><p><strong>主要风险是免费数据的完整性与口径。</strong>候选日线可得，不代表整个市场的资金、封板率、ETF 份额和跨市场指标都已可得。任何受影响结论都需要显示其覆盖范围。</p></div>
+<div class="table-wrap"><table><thead><tr><th class="first">依据类型</th><th>当前事实</th><th>仍需落实</th></tr></thead><tbody>
+<tr><td>用户确认</td><td>R11 四层、候选、周期、人工交易及费用边界</td><td>档案中的具体规则与逻辑证据逐步完善</td></tr>
+<tr><td>本机实测</td><td>macOS 11.7.11 / arm64；Node 22.22.2；Codex CLI 0.156.0</td><td>Windows、具体行情客户端与登录环境</td></tr>
+<tr><td>公开接口</td><td>iFinD 有免费额度；Codex 有非交互执行入口</td><td>真实账号字段覆盖、稳定性和会员调用额度</td></tr>
+<tr><td>时间口径</td><td>部分外部数据是日频；小时刷新不会改变源频率</td><td>各字段的源日期、公布时间、单位和定义</td></tr>
+</tbody></table></div>
+<details><summary>数据缺口应怎样处理</summary><div>
+<p>优先免费正式接口，再找其他真实免费来源补充；确实无法获取时记录缺口及对结论的影响。多源数据需要统一单位、币种、时间与定义。</p>
+<p>完整市场涨跌统计必须能落实排除范围；ETF 份额不能用成交量代替；“高股息”“周期反转”等逻辑还需要相关资料，单看走势无法核实全部逻辑。</p>
+<p class="small">程序结果应能复算，Codex 的输入和输出应能回看。没有历史统计依据时，不把 AI 的表达强度当成策略胜率。</p>
+</div></details>
+<details><summary>已核实的官方资料与本地证据</summary><div>
+<p>iFinD 官方权限页列出免费实时行情额度，并列明免费 EDB 宏观接口不提供。这里只核实了公开说明，未登录你的账号。<a class="source" href="https://quantapi.51ifind.com/gwstatic/static/ds_web/quantapi-web/help-center/permission.html" target="_blank" rel="noopener noreferrer">iFinD 权限说明</a></p>
+<p>Codex 官方支持非交互执行；本机也已读到对应帮助入口。实际集成方式、登录与额度在设计中核实。<a class="source" href="https://learn.chatgpt.com/docs/developer-commands" target="_blank" rel="noopener noreferrer">Codex 命令说明</a> · <a class="source" href="https://learn.chatgpt.com/docs/pricing" target="_blank" rel="noopener noreferrer">使用与计费</a></p>
+<p>FRED 的 10 年 TIPS 实际收益率 DFII10 为日频序列。<a class="source" href="https://fred.stlouisfed.org/series/DFII10" target="_blank" rel="noopener noreferrer">DFII10</a></p>
+<p class="small">本轮只读环境命令：sw_vers、uname -m、node --version、codex --version。未安装依赖或执行行情接入实现。</p>
+</div></details>
+</section>
+<footer class="footer">
+<p>作者：Codex · 项目当前需求池共 1 条 · 本页为 A1 审阅摘要，完整范围和建议以分析正文为准。</p>
+<p><a href="../02-需求分析/需求分析.md">完整需求分析 A1</a><a href="../01-需求/REQ-001-按四层交易系统推导与思考.md">需求 R11 与授权原话</a><a href="../records/codex-阶段记录.md">阶段记录</a></p>
+<p>入口依据：你在补充 Q7–Q9 后明确要求开始分析；R11 是该轮内容落档。A1 与拆任务许可已获签，当前进入任务卡 T1 审阅。</p>
+</footer>
+</main>
+<script>
+const tabs=Array.from(document.querySelectorAll('[role="tab"]'));
+function show(tab){tabs.forEach(t=>{const active=t===tab;t.setAttribute('aria-selected',String(active));t.tabIndex=active?0:-1;document.getElementById(t.getAttribute('aria-controls')).hidden=!active;});}
+tabs.forEach((t,i)=>{t.addEventListener('click',()=>show(t));t.addEventListener('keydown',e=>{let next;if(e.key==='ArrowRight')next=(i+1)%tabs.length;if(e.key==='ArrowLeft')next=(i+tabs.length-1)%tabs.length;if(e.key==='Home')next=0;if(e.key==='End')next=tabs.length-1;if(next!==undefined){e.preventDefault();show(tabs[next]);tabs[next].focus();}});});
+</script>
+</body></html>

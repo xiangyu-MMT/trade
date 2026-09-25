@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>P03 trade｜数据与分析选型答疑 R1</title>
+<style>
+:root{--ink:#172d32;--muted:#52656a;--paper:#f5f7f6;--white:#fff;--line:#dce5e0;--green:#12694f;--pale:#edf6f1;--gold:#805816;--goldpale:#fff7e7}*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.75 -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif}main{max-width:1080px;margin:auto;padding:40px 28px 28px}a{color:var(--green);text-underline-offset:3px}button,input{font:inherit}button{cursor:pointer}button:focus-visible,a:focus-visible,summary:focus-visible,input:focus-visible{outline:3px solid #dbab44;outline-offset:4px}.eyebrow{font-size:12px;letter-spacing:1.5px;font-weight:700;color:var(--green)}h1{font-size:clamp(26px,4vw,39px);line-height:1.35;letter-spacing:-.8px;margin:12px 0}h2{font-size:23px;margin:0 0 12px;line-height:1.5}h3{font-size:17px;margin:0 0 8px}p{margin:0 0 13px}.sub{color:var(--muted);max-width:780px}.pills{display:flex;flex-wrap:wrap;gap:8px;margin:21px 0 24px}.pill{font-size:13px;padding:4px 11px;border:1px solid var(--line);border-radius:99px;background:white}.roles{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:28px}.role{background:var(--white);border:1px solid var(--line);border-radius:16px;padding:20px}.role b{display:block;font-size:19px;margin-bottom:4px}.role p{font-size:14px;color:var(--muted);margin:0}.role .num{font-size:12px;color:var(--green);letter-spacing:1px}.tabs{display:flex;gap:7px;flex-wrap:wrap;padding:6px;border:1px solid var(--line);border-radius:14px;background:#eaf0ec;margin-bottom:16px}.tab{flex:1;border:0;padding:10px 15px;border-radius:9px;color:var(--muted);background:transparent;white-space:nowrap}.tab[aria-selected="true"]{background:var(--white);color:var(--green);font-weight:700;box-shadow:0 2px 7px #18392a0b}.panel{background:white;border:1px solid var(--line);border-radius:18px;padding:28px}.panel[hidden]{display:none}.lead{font-size:17px}.callout{border-left:3px solid var(--green);background:var(--pale);padding:15px 18px;border-radius:0 10px 10px 0;margin:18px 0}.callout p:last-child{margin:0}.note{background:var(--goldpale);border-left-color:#b68b3b;color:#57421f}.small{font-size:13px;color:var(--muted)}.flow{display:flex;align-items:stretch;gap:9px;margin:20px 0;flex-wrap:wrap}.step{flex:1;min-width:118px;background:var(--paper);padding:12px;border:1px solid var(--line);border-radius:10px;text-align:center;font-size:14px}.step small{display:block;color:var(--muted);font-size:12px}.arrow{align-self:center;color:#789187}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;font-size:14px;margin:14px 0}th{text-align:left;color:var(--muted);font-weight:600;background:var(--paper)}th,td{padding:13px 12px;border-bottom:1px solid var(--line);vertical-align:top}th:first-child,td:first-child{width:18%;white-space:nowrap}td:last-child{width:40%}details{border-top:1px solid var(--line);margin-top:19px;padding-top:15px}summary{font-weight:600;cursor:pointer}details>div{padding-top:14px}.source{font-size:12px;white-space:nowrap}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}.soft{padding:19px;border:1px solid var(--line);border-radius:12px;background:var(--paper)}.soft p:last-child{margin-bottom:0}.checks{padding-left:22px;margin:10px 0 16px}.checks li{padding:5px 0}.meter{height:12px;background:#dfe9e3;border-radius:8px;overflow:hidden;margin:12px 0}.fill{height:100%;width:17.6%;background:var(--green);transition:width .2s}.calc-row{display:flex;justify-content:space-between;gap:15px;flex-wrap:wrap}input[type=range]{width:100%;accent-color:var(--green)}.number{font-size:25px;font-weight:750;color:var(--green)}.preview{padding:18px;border:1px dashed #9bb2a6;border-radius:14px;background:#f7faf8;margin:20px 0}.preview-top{display:flex;justify-content:space-between;gap:10px;font-size:13px;color:var(--muted);margin-bottom:14px}.preview-main{background:white;border:1px solid var(--line);padding:16px;border-radius:10px}.preview-main b{display:block;margin-bottom:6px}.preview-boxes{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}.preview-box{background:white;border:1px solid var(--line);padding:16px;border-radius:10px}.preview-box span{font-size:13px;color:var(--muted);display:block}.chart-placeholder{height:80px;display:flex;align-items:center;justify-content:center;background:repeating-linear-gradient(to bottom,#fff,#fff 25px,#edf1ee 26px);color:#61796b;border-radius:7px;border:1px solid var(--line);margin-top:10px;font-size:13px}.footer{padding:20px 3px 0;font-size:12px;color:var(--muted)}.footer p{margin:6px 0}.footer a{margin-right:14px}@media(max-width:680px){main{padding:24px 15px}.roles{gap:8px}.role{padding:13px}.role b{font-size:17px}.role p{font-size:12px}.panel{padding:20px 16px}.tab{padding:9px 7px;font-size:14px}.grid2,.preview-boxes{grid-template-columns:1fr}.arrow{display:none}.step{min-width:42%}th,td{padding:10px 8px}td:last-child{width:auto}}@media print{body{background:white}main{padding:0}.tabs{display:none}.panel[hidden]{display:block}.panel{margin:20px 0;break-inside:avoid}.roles{break-inside:avoid}details>div{display:block}.footer{font-size:10px}a{color:inherit}}
+</style>
+</head>
+<body>
+<main>
+<header>
+<div class="eyebrow">P03 / TRADE · 选型答疑 R1 · 2026-09-25</div>
+<h1>建议采用程序 + AI 的组合</h1>
+<p class="sub">程序负责数据和可复算的结果，AI 结合你的交易体系解释与归纳，由你确认计划并完成交易。</p>
+<div class="pills"><span class="pill">约 5 分钟更新</span><span class="pill">每天看盘两次</span><span class="pill">免费行情优先</span><span class="pill">当前手动交易</span></div>
+</header>
+<div class="roles">
+<div class="role"><span class="num">01 / 程序</span><b>取数、计算、记录</b><p>指标与明确条件可以复算，数据可追溯。</p></div>
+<div class="role"><span class="num">02 / AI</span><b>解读、归纳、复盘</b><p>读取已确认的逻辑、技术和模式，说明依据与分歧。</p></div>
+<div class="role"><span class="num">03 / 你</span><b>确认、决策、执行</b><p>维护交易体系，确认计划，亲自操作买卖。</p></div>
+</div>
+<div class="tabs" role="tablist" aria-label="选型答疑主题">
+<button class="tab" id="tab-analysis" type="button" role="tab" aria-selected="true" aria-controls="analysis">怎样分析</button>
+<button class="tab" id="tab-data" type="button" role="tab" aria-selected="false" aria-controls="data" tabindex="-1">免费数据</button>
+<button class="tab" id="tab-trade" type="button" role="tab" aria-selected="false" aria-controls="trade" tabindex="-1">自动交易</button>
+<button class="tab" id="tab-view" type="button" role="tab" aria-selected="false" aria-controls="view" tabindex="-1">页面展示</button>
+</div>
+<section class="panel" id="analysis" role="tabpanel" aria-labelledby="tab-analysis">
+<h2>把确定的计算与需要理解的判断接起来</h2>
+<p class="lead">你的体系里既有均线等明确计算，也有“科技吸血”“高切低”等依赖上下文的判断。我的建议是让两部分共享同一份数据和已确认定义。</p>
+<div class="flow" aria-label="数据进入程序计算，再由AI结合归档解释，输出页面">
+<div class="step">行情与资料<small>来源、时点</small></div><span class="arrow">→</span><div class="step">程序计算<small>指标、规则、变化</small></div><span class="arrow">→</span><div class="step">AI 读取归档<small>证据、解释、分歧</small></div><span class="arrow">→</span><div class="step">HTML 结果<small>你查看并行动</small></div>
+</div>
+<div class="table-wrap"><table><thead><tr><th>你的四层</th><th>程序适合负责</th><th>AI 适合辅助</th></tr></thead><tbody>
+<tr><td>逻辑</td><td>保存熟悉逻辑、适用对象与确认记录</td><td>解释候选为什么符合某种逻辑，列出反证</td></tr>
+<tr><td>技术</td><td>计算均线、OBV、MACD、CCI；统计盘面变化</td><td>结合这些结果解读趋势与盘面结构</td></tr>
+<tr><td>模式</td><td>检查已有明确定义的条件，整理跨市场数据</td><td>解释可能的市场状态、模式冲突和策略适配</td></tr>
+<tr><td>计划</td><td>保存计划与实际执行，核对已定义的偏差</td><td>辅助拟定计划、复盘问题、提出体系修订</td></tr>
+</tbody></table></div>
+<p class="small">这是职责建议。模式定义、阈值和取舍由你的交易体系决定；系统归纳出的新内容经你确认后再纳入。</p>
+<div class="callout"><p><strong>适合你的运行节奏：</strong>程序约每 5 分钟更新数据和指标；你每天两次看盘时生成重点解读，必要时手动刷新 AI。具体查看时间随后再定。</p></div>
+<details><summary>为什么这样选，以及 Skill 放在哪里</summary><div>
+<p>纯规则便于复算，但每种模式都要定义条件；纯 AI 便于解释新情境，却难以保证每次计算和措辞一致。组合方案把数值依据留在程序里，让 AI 对照依据形成解释。</p>
+<p>配置保存参数与明确条件；归档保存你的总结、案例和定义；Skill 可以说明“先读什么、如何调用计算工具、按什么格式解释”。它们服务同一套流程。<a class="source" href="https://developers.openai.com/plugins/concepts/plugins" target="_blank" rel="noopener noreferrer">OpenAI：插件、Skill 与 MCP</a></p>
+<p>首期可以用已有 AI 助手按需解读程序输出；如果以后要自动生成报告，再选择模型调用方式并核算费用。免费行情与 AI 使用成本分别核算。</p>
+<p class="small">“胜率”需要明确样本、规则、统计窗口与成本后计算。AI 的语气或置信度不能直接充当历史胜率。复盘应能回到当时数据、计划和所用定义。</p>
+</div></details>
+</section>
+<section class="panel" id="data" role="tabpanel" aria-labelledby="tab-data" hidden>
+<h2>先核验同花顺免费接口能覆盖多少</h2>
+<p>你已经使用同花顺，首个候选可以是 <strong>iFinD 数据接口</strong>。官方文档提供 Python / HTTP 行情调用，公开权限页列出免费实时行情额度为每月 300 万条。需要对应 iFinD 账号及接口权限；当前普通软件使用情况尚不能证明你已开通。<a class="source" href="https://quantapi.51ifind.com/gwstatic/static/ds_web/quantapi-web/help-center/manual.html" target="_blank" rel="noopener noreferrer">接口手册</a> · <a class="source" href="https://quantapi.51ifind.com/gwstatic/static/ds_web/quantapi-web/help-center/permission.html" target="_blank" rel="noopener noreferrer">免费额度</a></p>
+<div class="callout note"><p><strong>免费方案尚未实测覆盖全部需求。</strong>候选行情、板块资金、封板率、ETF 份额、海外数据要分别核对。数据获取时间与源数据时间都应保留，页面直接显示过期或缺失项。</p></div>
+<div class="table-wrap"><table><thead><tr><th>数据部分</th><th>建议路径</th><th>需要核实</th></tr></thead><tbody>
+<tr><td>候选行情与指标</td><td>优先验证 iFinD 免费接口</td><td>你给定的板块、宽基代码是否支持，免费字段和历史长度是否够用</td></tr>
+<tr><td>盘面结构</td><td>优先取已汇总的市场、板块数据</td><td>资金口径、涨跌停与封板率；不能仅靠候选清单推断全市场</td></tr>
+<tr><td>融资余额、ETF 份额</td><td>按各来源实际发布频率更新</td><td>确认值与盘中估算须区分；逐字段核实可得时点</td></tr>
+<tr><td>美债 / TIPS 等</td><td>日频数据可考虑官方公开源</td><td>FRED 的 DGS10、DFII10 为日频；盘中数据另找来源与权限</td></tr>
+</tbody></table></div>
+<p class="small">融资余额可参考<a href="https://www.sse.com.cn/market/othersdata/margin/sum/" target="_blank" rel="noopener noreferrer">上交所汇总口径</a>；利率频率见 <a href="https://fred.stlouisfed.org/series/DGS10" target="_blank" rel="noopener noreferrer">DGS10</a>、<a href="https://fred.stlouisfed.org/series/DFII10" target="_blank" rel="noopener noreferrer">DFII10</a>。日频序列每 5 分钟查询一次，源数据仍是日频。</p>
+<details><summary>免费额度够不够：用候选数量估算</summary><div>
+<p class="small">仅作量级示例：每标的 10 个实时字段，每天 48 次，每月假设 22 个交易日。按每个数值单元格一条估算，不含历史数据和其他接口用量。</p>
+<label for="symbols">候选数量：<output id="symbols-label" for="symbols">50</output> 个</label>
+<input id="symbols" type="range" min="10" max="300" step="10" value="50">
+<div class="calc-row"><div><span class="number" id="usage">52.8 万</span><div class="small">估算每月实时数据量</div></div><div><span id="pct">17.6%</span><div class="small">对照公开 300 万条额度</div></div></div>
+<div class="meter" aria-hidden="true"><div class="fill" id="fill"></div></div>
+<p class="small">50 × 10 × 48 × 22 = 528,000 条。假设改成 5,000 只股票、每只 8 字段，同样频率约需 4,224 万条。因此应核验市场汇总接口，避免把全市场逐股轮询作为免费方案前提。以上为本页计算，不是账户已获额度或供应商报价。</p>
+</div></details>
+<details><summary>MCP、小步和 Codex 怎么接入；还有哪些渠道</summary><div>
+<p>MCP 负责把工具和数据暴露给 AI，数据的内容、时效与权限仍由提供方决定。Codex 支持本地及远程 MCP；也可以通过程序调用正式 HTTP / Python 接口。<a class="source" href="https://learn.chatgpt.com/docs/extend/mcp?surface=cli" target="_blank" rel="noopener noreferrer">Codex MCP 官方说明</a></p>
+<p>WorkBuddy 官方提供 MCP 连接机制。如果小步已有可用行情连接器，可以评估复用；持续采集建议交由定时程序，助手读取同一份带时间戳的数据。你所说的具体连接器、授权与覆盖范围尚未验证。<a class="source" href="https://open.workbuddy.cn/docs/connector" target="_blank" rel="noopener noreferrer">WorkBuddy 连接器文档</a></p>
+<p>通达信官方还提供行情 Python 接口及本地 HTTP 调用方式；迅投 XtData 可订阅行情。这些是备用接入路径，账号、费用、运行环境与字段都要核对。通达信部分接口依赖 DLL，当前 Mac 是否可用需单独确认。<a class="source" href="https://help.tdx.com.cn/quant/docs/markdown/mindoc-1hjbgqpdhv114/mindoc-1hjbht3176oi0.html" target="_blank" rel="noopener noreferrer">通达信 tqserver</a> · <a class="source" href="https://dict.thinktrader.net/nativeApi/xtdata.html" target="_blank" rel="noopener noreferrer">迅投 XtData</a></p>
+<p class="small">本次插件目录搜索未找到同花顺、通达信或 iFinD 的匹配项；当前会话没有已连接的上述专业行情工具。核实的是公开文档，尚未登录你的账号或取得实际行情。</p>
+</div></details>
+</section>
+<section class="panel" id="trade" role="tabpanel" aria-labelledby="tab-trade" hidden>
+<h2>可以程序交易，开通要经过券商</h2>
+<p>券商支持的 QMT 等渠道已经能够用程序报单、撤单、查询委托和成交。技术上可行，实际能开通什么取决于你的券商、账户和所交易品种。<a class="source" href="https://dict.thinktrader.net/nativeApi/xttrader.html" target="_blank" rel="noopener noreferrer">迅投交易接口</a></p>
+<div class="grid2">
+<div class="soft"><h3>需要哪些条件</h3><ol class="checks"><li>证券账户及对应品种的交易资格。</li><li>券商允许使用的程序接口，并完成其开通、协议及适当性要求。</li><li>按适用规则完成程序化交易报告，再开始相关交易。</li></ol></div>
+<div class="soft"><h3>门槛高不高</h3><p>能够接入不等于能够稳定实盘。接口开通后，还要正确处理成交、撤单和断线等状态。</p><p>未确定券商前，我不能给出“需要多少万元”的可靠数字。资产门槛、适当性、功能及费用应以开户券商当前要求为准。</p></div>
+</div>
+<p class="small" style="margin-top:16px">证监会规定自 2024-10-08 实施，要求先报告后交易；上交所实施细则自 2025-07-07 实施，官方页面标为现行有效。<a href="https://www.csrc.gov.cn/csrc/c100028/c7480577/content.shtml" target="_blank" rel="noopener noreferrer">证监会规定说明</a> · <a href="https://www.sse.com.cn/lawandrules/sselawsrules2025/trade/universal/c/c_20250612_10781696.shtml" target="_blank" rel="noopener noreferrer">上交所实施细则</a></p>
+<p class="small">规则的范围包含程序自动生成或下达交易指令。若以后系统生成可执行的交易指令，不能只根据“最后由人点击”判断是否需要报告，应由开户券商确认具体使用方式。</p>
+<div class="callout"><p><strong>你当前已明确：不给系统交易权限，实际买卖由你操作。</strong>本期围绕数据、分析、计划与复盘推进，行情数据权限单独核实。</p></div>
+</section>
+<section class="panel" id="view" role="tabpanel" aria-labelledby="tab-view" hidden>
+<h2>首页只回答：现在怎样、看谁、做什么</h2>
+<p>建议先展示一句市场判断、少量候选和计划提醒，再提供两张帮助判断的图。完整指标、归档与推导依据按需展开。</p>
+<div class="preview" aria-label="仅展示信息布局，未接入行情">
+<div class="preview-top"><strong>TRADE / 看盘摘要</strong><span>布局示意 · 尚未接入行情</span></div>
+<div class="preview-main"><b>市场状态：一句判断 + 关键分歧</b><span class="small">同时显示数据截至时间、结论生成时间；有缺口时直接标明。</span></div>
+<div class="preview-boxes"><div class="preview-box"><strong>候选方向</strong><span>建议最多展示 3 个：名称、入选理由、未满足条件</span></div><div class="preview-box"><strong>计划提醒</strong><span>当前计划、等待条件、执行偏差；由你操作买卖</span></div></div>
+<div class="preview-boxes"><div class="preview-box"><strong>市场广度变化</strong><div class="chart-placeholder">图 1 · 用真实数据接入后绘制</div></div><div class="preview-box"><strong>候选走势与均线</strong><div class="chart-placeholder">图 2 · 可切换候选查看</div></div></div>
+</div>
+<p>每次看盘先突出“相比上次发生了什么变化”。没有足够依据时可以显示等待或证据不足。完整的 OBV、MACD、CCI、跨市场数据和推导记录放在详情里。</p>
+<p class="small">以上为信息布局建议，数量和图表类型尚未定稿。当前这份 HTML 是静态答疑；未来行情页面需要数据服务更新，采集密钥应保存在服务端或本地服务中。</p>
+</section>
+<footer class="footer">
+<p>作者：Codex · 依据：翔宇本轮需求与上述官方资料 · 查询日期：2026-09-25</p>
+<p>当前为需求澄清参考，REQ-001 R8 仍是草稿；正式需求分析、任务卡和技术设计尚未开始。</p>
+<p><a href="../01-需求/REQ-001-按四层交易系统推导与思考.md">需求原文与修订记录</a><a href="../PROJECT.md">项目当前状态</a></p>
+</footer>
+</main>
+<script>
+const tabs=Array.from(document.querySelectorAll('[role="tab"]'));
+function selectTab(tab){tabs.forEach(t=>{const active=t===tab;t.setAttribute('aria-selected',String(active));t.tabIndex=active?0:-1;document.getElementById(t.getAttribute('aria-controls')).hidden=!active;});}
+tabs.forEach((tab,index)=>{tab.addEventListener('click',()=>selectTab(tab));tab.addEventListener('keydown',e=>{let next;if(e.key==='ArrowRight')next=(index+1)%tabs.length;if(e.key==='ArrowLeft')next=(index+tabs.length-1)%tabs.length;if(e.key==='Home')next=0;if(e.key==='End')next=tabs.length-1;if(next!==undefined){e.preventDefault();selectTab(tabs[next]);tabs[next].focus();}});});
+const slider=document.getElementById('symbols');
+slider.addEventListener('input',()=>{const count=Number(slider.value),amount=count*10*48*22,percentage=amount/3000000*100;document.getElementById('symbols-label').textContent=count;document.getElementById('usage').textContent=(amount/10000).toFixed(1)+' 万';document.getElementById('pct').textContent=percentage.toFixed(1)+'%';document.getElementById('fill').style.width=Math.min(100,percentage)+'%';});
+</script>
+</body>
+</html>
