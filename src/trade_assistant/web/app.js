@@ -183,7 +183,9 @@ function candidateCard(item) {
 
 function coveragePanel() {
   const f=currentRun.facts;
-  return `<details><summary>数据覆盖、口径与局限</summary><div><div class="table-wrap"><table><thead><tr><th>数据组</th><th>状态</th><th>说明</th></tr></thead><tbody>${(f.coverage||[]).map(x=>`<tr><td>${esc(x.group)}</td><td>${x.status==='ok'?'<span class="pill">已取得</span>':'<span class="pill warn">需留意</span>'}</td><td>${esc(x.detail)}</td></tr>`).join('')}</tbody></table></div>${list(currentRun.analysis?.result?.limitations||[])}<p class="small muted">${esc(f.market?.limit_definition||'')}</p></div></details>`;
+  const attempts=currentRun.error?.details?.attempts||currentRun.analysis?.trace?.attempts||[];
+  const aiDiagnostics=attempts.length?`<details><summary>AI调用与后备记录</summary><div>${list(attempts.map(x=>`${x.provider}：${x.message}`))}</div></details>`:'';
+  return `<details><summary>数据覆盖、口径与局限</summary><div>${aiDiagnostics}<div class="table-wrap"><table><thead><tr><th>数据组</th><th>状态</th><th>说明</th></tr></thead><tbody>${(f.coverage||[]).map(x=>`<tr><td>${esc(x.group)}</td><td>${x.status==='ok'?'<span class="pill">已取得</span>':'<span class="pill warn">需留意</span>'}</td><td>${esc(x.detail)}</td></tr>`).join('')}</tbody></table></div>${list(currentRun.analysis?.result?.limitations||[])}<p class="small muted">${esc(f.market?.limit_definition||'')}</p></div></details>`;
 }
 function renderOverview() {
   if(!currentRun?.facts)return emptyReport();

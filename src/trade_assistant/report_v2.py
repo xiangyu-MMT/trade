@@ -66,6 +66,8 @@ def render(run):
         if x.get("status") != "ok":
             parts.extend(['<li>', escape(x.get("group", "") + "：" + x.get("detail", "")), '</li>'])
     parts.extend('<li>' + escape(x) + '</li>' for x in ai.get("limitations", []))
+    attempts = ((run.get("error") or {}).get("details") or {}).get("attempts", []) or trace.get("attempts", [])
+    parts.extend('<li>AI调用：' + escape(x.get("provider", "") + " · " + x.get("message", "")) + '</li>' for x in attempts)
     parts.extend(['</ul></details><footer>轮次 ', escape(run["id"]), ' · 导出 ', escape(now()),
                   '。离线快照；确认计划、回填、删除与恢复需要正在运行的本地应用。</footer></main></body></html>'])
     return ''.join(parts)
