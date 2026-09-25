@@ -332,7 +332,7 @@ async function action(target) {
   if(name==='reload-config'){[configInfo,aiInfo]=await Promise.all([api('/api/config'),api('/api/ai')]);render();return;}
   if(name==='save-config'){
     let config;try{config=JSON.parse($('#config-editor').value);}catch(_){throw new Error('JSON格式无效，请检查引号、逗号和括号。');}
-    await api('/api/config','PUT',{config});configInfo=await api('/api/config');toast('配置已保存，下轮使用。');await loadState(true);return;
+    await api('/api/config','PUT',{config});[configInfo,aiInfo]=await Promise.all([api('/api/config'),api('/api/ai')]);toast('配置已保存，下轮使用。');await loadState(true);return;
   }
   if(name==='check-codex'){const r=await api('/api/codex');$('#codex-status').textContent=`Codex：${r.available?'命令可启动，实际以调用为准':'命令暂不可用'} · 认证 ${r.auth_kind}；DeepSeek：${r.deepseek?.key_configured?'凭据已配置':'未配置凭据'}${r.deepseek?.enabled?'，已启用':'，未启用'}`;return;}
   if(name==='add-stock'){
