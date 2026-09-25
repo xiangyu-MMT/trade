@@ -36,10 +36,20 @@ class Engine:
                                "technical_asof": tech.get("asof"), "trend_facts": tech.get("trend_facts", []),
                                "weekly": week[-8:], "status": tech["status"], "missing": tech.get("reasons", [])})
         industry_brief = [{k: row.get(k) for k in ("asset_id", "name", "change_pct", "net_flow", "flow_source", "filters_complete")} for row in facts["industries"]]
+        # Candidate technical fields already occur above. Keep the stable evidence
+        # key and provenance without sending every indicator twice to the model.
+        candidate_evidence = {x["evidence_id"]: x["asset_id"] for x in candidates}
+        evidence = {}
+        for key, value in facts["evidence"].items():
+            if key in candidate_evidence:
+                evidence[key] = {k: v for k, v in value.items() if k not in ("latest", "trend_facts")}
+                evidence[key]["details_in_candidate"] = candidate_evidence[key]
+            else:
+                evidence[key] = value
         return {"run_id": run_id, "asof": facts["asof"], "requested_at": now(),
                 "market_calendar": facts.get("calendar"),
                 "candidates": candidates, "market": facts["market"], "industry_ranking": facts["industry_ranking"],
-                "industry_structure": industry_brief, "evidence": facts["evidence"],
+                "industry_structure": industry_brief, "evidence": evidence,
                 "coverage": facts["coverage"], "limitations": facts["limitations"],
                 "confirmed_knowledge": self.knowledge.context(),
                 "requirements": {"holding_period": "几天到几周", "primary_period": "日线", "secondary_period": "周线",

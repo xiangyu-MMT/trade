@@ -109,7 +109,8 @@ class CodexBridge:
         command = self.command_prefix(cfg["command"]) + ["exec", "--ignore-user-config", "--sandbox", "read-only",
                    "--skip-git-repo-check", "--ephemeral", "--json", "--color", "never",
                    "--output-schema", str(schema_path), "--output-last-message", str(output_path),
-                   "-c", "project_doc_max_bytes=0", "-c", 'web_search="disabled"']
+                   "-c", "project_doc_max_bytes=0", "-c", 'web_search="disabled"',
+                   "-c", 'model_reasoning_effort="medium"']
         for feature in ("shell_tool", "apps", "plugins", "browser_use", "computer_use", "multi_agent",
                         "skill_search", "hooks", "image_generation", "view_image", "sleep_tool", "code_mode_host"):
             command.extend(["--disable", feature])
@@ -125,15 +126,17 @@ class CodexBridge:
         else:
             kwargs["start_new_session"] = True
         process = None
+        trace = {"purpose": purpose, "created_at": now(), "record_id": run_dir.name,
+                 "input_hash": digest(payload), "record": str(run_dir),
+                 "auth_kind": auth["auth_kind"], "schema": schema_path.name,
+                 "reasoning_effort": "medium", "status": "running"}
+        write_json(run_dir / "trace.json", trace)
         try:
             process = subprocess.Popen(command, **kwargs)
             self.process = process
             stdout, stderr = process.communicate(prompt, timeout=cfg["timeout"])
         except subprocess.TimeoutExpired:
-            if os.name == "nt":
-                subprocess.run(["taskkill", "/PID", str(process.pid), "/T", "/F"], capture_output=True)
-            else:
-                os.killpg(process.pid, signal.SIGTERM)
+            self.cancel()
             try:
                 stdout, stderr = process.communicate(timeout=5)
             except subprocess.TimeoutExpired:
@@ -141,17 +144,20 @@ class CodexBridge:
                 stdout, stderr = process.communicate()
             (run_dir / "stdout.jsonl").write_text(redact(stdout), encoding="utf-8")
             (run_dir / "stderr.log").write_text(redact(stderr), encoding="utf-8")
-            raise AppError("codex_timeout", "Codex 推导超时，本轮资料已保留", {"record": str(run_dir)}, 503)
+            trace.update(status="timeout", seconds=round(time.monotonic() - start, 2),
+                         finished_at=now(), exit_code=process.returncode)
+            write_json(run_dir / "trace.json", trace)
+            raise AppError("codex_timeout", "Codex 推导超时，本轮资料已保留，可稍后再次运行", trace, 503)
         except OSError as exc:
+            trace.update(status="start_failed", finished_at=now(), diagnostic=redact(str(exc)))
+            write_json(run_dir / "trace.json", trace)
             raise AppError("codex_start", "无法启动 Codex", {"reason": str(exc)}, 503) from exc
         finally:
             self.process = None
         (run_dir / "stdout.jsonl").write_text(redact(stdout), encoding="utf-8")
         (run_dir / "stderr.log").write_text(redact(stderr), encoding="utf-8")
-        trace = {"purpose": purpose, "created_at": now(), "seconds": round(time.monotonic() - start, 2),
-                 "record_id": run_dir.name,
-                 "input_hash": digest(payload), "exit_code": process.returncode, "record": str(run_dir),
-                 "auth_kind": auth["auth_kind"], "schema": schema_path.name}
+        trace.update(status="returned", finished_at=now(), seconds=round(time.monotonic() - start, 2),
+                     exit_code=process.returncode)
         write_json(run_dir / "trace.json", trace)
         if process.returncode != 0 or not output_path.exists():
             raise AppError("codex_failed", "Codex 未完成本轮推导", {**trace, "diagnostic": redact(stderr)[-1500:]}, 503)
@@ -162,5 +168,6 @@ class CodexBridge:
         except (ValueError, TypeError) as exc:
             raise AppError("invalid_ai_output", "Codex 返回内容无法解析", trace, 503) from exc
         trace["output_hash"] = digest(result)
+        trace["status"] = "completed"
         write_json(run_dir / "trace.json", trace)
         return {"result": result, "trace": trace}

@@ -12,7 +12,8 @@ class Runner:
         self.state_lock = threading.Lock()
         self.stop_event = threading.Event()
         self.active, self.last_job = None, None
-        self.next_due = time.monotonic() + settings.load()["refresh_seconds"]
+        # Wall time includes device sleep; overdue refresh runs once after wake.
+        self.next_due = time.time() + settings.load()["refresh_seconds"]
         self.scheduled_handler = None
         self.timer_thread = None
         self.worker = None
@@ -30,11 +31,11 @@ class Runner:
                     self.next_due = None
                     continue
                 if self.next_due is None:
-                    self.next_due = time.monotonic() + cfg["refresh_seconds"]
-                if time.monotonic() >= self.next_due and not self.operation_lock.locked():
+                    self.next_due = time.time() + cfg["refresh_seconds"]
+                if time.time() >= self.next_due and not self.operation_lock.locked():
                     self.start("analysis", self.scheduled_handler)
             except AppError:
-                self.next_due = time.monotonic() + 60
+                self.next_due = time.time() + 60
 
     def start(self, kind, handler):
         if self.stop_event.is_set():
@@ -63,7 +64,7 @@ class Runner:
                         interval = self.settings.load()["refresh_seconds"]
                     except AppError:
                         interval = 3600
-                    self.next_due = time.monotonic() + interval
+                    self.next_due = time.time() + interval
                 self.operation_lock.release()
         self.worker = threading.Thread(target=work, name="p03-" + kind, daemon=True)
         self.worker.start()
@@ -86,7 +87,7 @@ class Runner:
             config_error = exc.as_dict()
         upcoming = None
         if cfg["auto_refresh"] and self.next_due:
-            upcoming = (datetime.now(CN) + timedelta(seconds=max(0, self.next_due - time.monotonic()))).isoformat(timespec="seconds")
+            upcoming = (datetime.now(CN) + timedelta(seconds=max(0, self.next_due - time.time()))).isoformat(timespec="seconds")
         return {"active": active, "last_job_id": last, "next_refresh": upcoming,
                 "auto_refresh": cfg["auto_refresh"], "refresh_seconds": cfg["refresh_seconds"], "config_error": config_error}
 
