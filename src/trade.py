@@ -19,6 +19,12 @@ def main():
     calculate.add_argument("--input", required=True)
     calculate.add_argument("--output")
     sub.add_parser("status", help="查看本地档案和运行状态")
+    analyze = sub.add_parser("analyze", help="用已确认档案与已有事实调用 Codex")
+    analyze.add_argument("--input", required=True)
+    analyze.add_argument("--output")
+    run = sub.add_parser("run", help="执行并保存完整分析轮次")
+    run.add_argument("--snapshot", help="使用已保存真实快照，保留原始数据日期")
+    run.add_argument("--no-ai", action="store_true", help="仅生成程序事实，并明确标记AI未执行")
     args = parser.parse_args()
     try:
         settings = Settings(args.home)
@@ -47,6 +53,20 @@ def main():
             knowledge = Knowledge(store)
             knowledge.seed()
             print(dumps({"home": str(settings.home), "knowledge_count": len(knowledge.list()), "runs": store.list_runs()}, True))
+        elif args.command in ("run", "analyze"):
+            from trade_assistant.engine import Engine
+            engine = Engine(settings)
+            if args.command == "analyze":
+                result = engine.analyze(json.loads(Path(args.input).read_text(encoding="utf-8")))
+                if args.output:
+                    write_json(args.output, result)
+                    print(dumps({"coverage": result["coverage"], "trace": result["trace"], "output": args.output}, True))
+                else:
+                    print(dumps(result, True))
+            else:
+                snapshot = json.loads(Path(args.snapshot).read_text(encoding="utf-8")) if args.snapshot else None
+                result = engine.run(lambda stage, detail: print(stage + "：" + detail, file=sys.stderr, flush=True), snapshot, args.no_ai)
+                print(dumps({k: result[k] for k in ("id", "status", "created_at", "finished_at", "error", "metadata")}, True))
     except AppError as exc:
         print(dumps({"error": exc.as_dict()}, True), file=sys.stderr)
         return 1

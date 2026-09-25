@@ -1,0 +1,157 @@
+{
+  "type": "object",
+  "properties": {
+    "market": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "type": "string"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "mode_refs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "evidence_refs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "against": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "state",
+        "summary",
+        "mode_refs",
+        "evidence_refs",
+        "against"
+      ],
+      "additionalProperties": false
+    },
+    "candidates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "asset_id": {
+            "type": "string"
+          },
+          "stance": {
+            "type": "string",
+            "enum": [
+              "candidate",
+              "observe",
+              "wait"
+            ]
+          },
+          "logic_refs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "mode_refs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "technical_summary": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "evidence_refs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "against": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "missing": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "asset_id",
+          "stance",
+          "logic_refs",
+          "mode_refs",
+          "technical_summary",
+          "reason",
+          "evidence_refs",
+          "against",
+          "missing"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "knowledge_proposals": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "logic",
+              "technical",
+              "mode"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "evidence_refs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "kind",
+          "title",
+          "body",
+          "evidence_refs"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "market",
+    "candidates",
+    "limitations",
+    "knowledge_proposals"
+  ],
+  "additionalProperties": false
+}
