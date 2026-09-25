@@ -1,0 +1,67 @@
+{
+  "type": "object",
+  "properties": {
+    "summary": {
+      "type": "string"
+    },
+    "plan_review": {
+      "type": "string"
+    },
+    "execution_review": {
+      "type": "string"
+    },
+    "outcome_review": {
+      "type": "string"
+    },
+    "uncertainties": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "knowledge_proposals": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "logic",
+              "technical",
+              "mode"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "evidence_refs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "kind",
+          "title",
+          "body",
+          "evidence_refs"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "summary",
+    "plan_review",
+    "execution_review",
+    "outcome_review",
+    "uncertainties",
+    "knowledge_proposals"
+  ],
+  "additionalProperties": false
+}

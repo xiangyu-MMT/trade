@@ -288,9 +288,16 @@ class Store:
             known_runs = {row["id"]: dict(row) for row in conn.execute("SELECT * FROM runs")}
             known_objects = {**existing, **staged_objects}
             run_ids = set(known_runs) | set(staged_runs)
+            object_kinds = {}
+            for key, row in known_objects.items():
+                previous_kind = object_kinds.setdefault(key[0], row["kind"])
+                if previous_kind != row["kind"]:
+                    raise AppError("validation_error", "同一对象的版本类别不一致")
             for row in staged_objects.values():
                 p = json.loads(row["payload"])
                 refs = list(p.get("knowledge_refs") or [])
+                refs.extend(p.get("execution_refs") or [])
+                refs.extend(p.get("plan_versions") or [])
                 for key in ("plan_ref", "origin_ref"):
                     if p.get(key):
                         refs.append(p[key])

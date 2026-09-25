@@ -1,0 +1,85 @@
+{
+  "type": "object",
+  "properties": {
+    "asset_id": {
+      "type": "string"
+    },
+    "execution_asset_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "plan_type": {
+      "type": "string",
+      "enum": [
+        "observation",
+        "action"
+      ]
+    },
+    "basis": {
+      "type": "object",
+      "properties": {
+        "logic": {
+          "type": "string"
+        },
+        "technical": {
+          "type": "string"
+        },
+        "mode": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "logic",
+        "technical",
+        "mode"
+      ],
+      "additionalProperties": false
+    },
+    "entry": {
+      "type": "string"
+    },
+    "exit": {
+      "type": "string"
+    },
+    "position_risk": {
+      "type": "string"
+    },
+    "validity": {
+      "type": "string"
+    },
+    "missing": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "knowledge_refs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "evidence_refs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "asset_id",
+    "execution_asset_id",
+    "plan_type",
+    "basis",
+    "entry",
+    "exit",
+    "position_risk",
+    "validity",
+    "missing",
+    "knowledge_refs",
+    "evidence_refs"
+  ],
+  "additionalProperties": false
+}

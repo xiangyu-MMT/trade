@@ -34,6 +34,8 @@ class Knowledge:
         if not isinstance(layers, list) or not layers or not set(layers).issubset(LAYERS):
             raise AppError("validation_error", "layers 需包含 logic、technical、mode 中的一项或多项")
         result["source"] = require_text(payload.get("source", "用户录入"), "来源", 2000)
+        if payload.get("usage", "general") not in ("general", "risk"):
+            raise AppError("validation_error", "知识用途应为 general 或 risk")
         if "evidence" in payload and (not isinstance(payload["evidence"], list) or any(not isinstance(x, str) for x in payload["evidence"])):
             raise AppError("validation_error", "证据需为文本列表")
         return result
