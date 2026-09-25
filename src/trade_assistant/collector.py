@@ -4,6 +4,8 @@ from datetime import datetime
 from .http_client import HttpClient
 from .providers.eastmoney import Eastmoney, eligible
 from .providers.macro import Macro
+from .providers.market_volume import MarketVolume
+from .volume_price import previous_day
 from .providers.ths import Ths
 from .util import AppError, CN, new_id, now
 
@@ -153,6 +155,7 @@ class Collector:
             market_day = max(latest) if latest else datetime.now(CN).strftime("%Y-%m-%d")
         self.progress("补充数据", "融资、ETF份额、涨跌停与跨市场观察")
         supplements = {
+            "market_turnover": lambda: MarketVolume(self.http).history(previous_day(market_day) if market_day == datetime.now(CN).strftime("%Y-%m-%d") and datetime.now(CN).hour < 15 else market_day),
             "margin": self.em.margin,
             "etf_shares": lambda: self.em.etf_shares(self.config["etf_observations"], market_day),
             "limits_up": lambda: self.em.limit_pool(market_day, "up"),
@@ -188,5 +191,6 @@ class Collector:
                 "histories": valid_histories, "market": market, "industries": industries, "industry_ranking": ranking,
                 "macro": [v for k, v in supplements.items() if (k.startswith("macro:") or k == "tips") and v],
                 "margin": supplements.get("margin"), "etf_shares": supplements.get("etf_shares"),
+                "market_turnover": supplements.get("market_turnover"),
                 "limit_pools": {key: supplements.get("limits_" + key) for key in ("up", "down", "broken")},
                 "coverage": coverage, "gaps": self.gaps, "attempts": self.http.attempts}

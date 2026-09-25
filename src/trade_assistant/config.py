@@ -3,6 +3,7 @@ import json
 import re
 import threading
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from .util import AppError, PROJECT, write_json
 
@@ -16,10 +17,17 @@ TRADABLE_SYMBOL = re.compile(r"^(?:sh(?:60|68|50|51|52|56|58)|sz(?:00|30|15|16))
 def validate(config):
     if not isinstance(config, dict) or config.get("schema_version") != 1:
         raise AppError("validation_error", "配置 schema_version 必须为 1")
+    config = copy.deepcopy(config)
+    defaults = {"provider": "codex", "model": "", "deepseek": {"enabled": False, "base_url": "https://api.deepseek.com", "model": "deepseek-flash", "timeout": 180}}
+    ai_config = config.setdefault("ai", {})
+    if not isinstance(ai_config, dict):
+        raise AppError("validation_error", "ai 必须为对象")
+    for key, value in defaults.items():
+        ai_config.setdefault(key, copy.deepcopy(value))
     def reject_secrets(value):
         if isinstance(value, dict):
             for key, child in value.items():
-                if str(key).lower() in {"api_key", "access_token", "refresh_token", "password", "authorization", "cookie", "secret"}:
+                if str(key).lower().endswith("api_key") or str(key).lower() in {"access_token", "refresh_token", "password", "authorization", "cookie", "secret"}:
                     raise AppError("validation_error", "请勿将凭据写入配置或导出文件")
                 reject_secrets(child)
         elif isinstance(value, list):
@@ -72,6 +80,18 @@ def validate(config):
         raise AppError("validation_error", "ai.enabled/timeout 格式无效")
     if not isinstance(ai.get("command"), str) or not ai["command"].strip():
         raise AppError("validation_error", "ai.command 需要 Codex 可执行文件路径或名称")
+    if ai.get("provider") not in ("codex", "deepseek") or not isinstance(ai.get("model"), str) or len(ai["model"]) > 150:
+        raise AppError("validation_error", "AI提供方或模型配置无效")
+    ds = ai.get("deepseek")
+    if not isinstance(ds, dict) or type(ds.get("enabled")) is not bool:
+        raise AppError("validation_error", "DeepSeek 配置需要 enabled")
+    url = urlsplit(str(ds.get("base_url", "")))
+    if url.scheme != "https" or not url.hostname or url.username or url.password or url.query or url.fragment:
+        raise AppError("validation_error", "DeepSeek服务地址需为不含凭据/查询参数的HTTPS地址")
+    if not isinstance(ds.get("model"), str) or not ds["model"].strip() or len(ds["model"]) > 150:
+        raise AppError("validation_error", "请填写DeepSeek模型名称")
+    if type(ds.get("timeout")) is not int or not 30 <= ds["timeout"] <= 900:
+        raise AppError("validation_error", "DeepSeek超时须为30–900秒")
     indicators = config.get("indicators", {})
     ma = indicators.get("ma_periods")
     if not isinstance(ma, list) or not ma or any(type(x) is not int or not 2 <= x <= 500 for x in ma):

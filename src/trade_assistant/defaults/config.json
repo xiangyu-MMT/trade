@@ -2,43 +2,155 @@
   "schema_version": 1,
   "industry_provider": "ths",
   "top_n": 10,
-  "fixed_industries": ["煤炭开采加工", "银行", "电力", "工业金属"],
+  "fixed_industries": [
+    "煤炭开采加工",
+    "银行",
+    "电力",
+    "工业金属"
+  ],
   "indices": [
-    {"asset_id":"sh000016","name":"上证50"},
-    {"asset_id":"sh000300","name":"沪深300"},
-    {"asset_id":"sh000905","name":"中证500"},
-    {"asset_id":"sh000852","name":"中证1000"},
-    {"asset_id":"csi932000","name":"中证2000"},
-    {"asset_id":"sz399006","name":"创业板指"},
-    {"asset_id":"sz399673","name":"创业板50"},
-    {"asset_id":"sh000688","name":"科创50"}
+    {
+      "asset_id": "sh000016",
+      "name": "上证50"
+    },
+    {
+      "asset_id": "sh000300",
+      "name": "沪深300"
+    },
+    {
+      "asset_id": "sh000905",
+      "name": "中证500"
+    },
+    {
+      "asset_id": "sh000852",
+      "name": "中证1000"
+    },
+    {
+      "asset_id": "csi932000",
+      "name": "中证2000"
+    },
+    {
+      "asset_id": "sz399006",
+      "name": "创业板指"
+    },
+    {
+      "asset_id": "sz399673",
+      "name": "创业板50"
+    },
+    {
+      "asset_id": "sh000688",
+      "name": "科创50"
+    }
   ],
   "stocks": [],
-  "watch_indices": [{"asset_id":"sh000001","name":"上证指数"}],
+  "watch_indices": [
+    {
+      "asset_id": "sh000001",
+      "name": "上证指数"
+    }
+  ],
   "execution_mappings": {},
   "etf_observations": [
-    {"asset_id":"sh510050","name":"上证50ETF华夏","index":"上证50"},
-    {"asset_id":"sh510300","name":"沪深300ETF华泰柏瑞","index":"沪深300"},
-    {"asset_id":"sh510500","name":"中证500ETF南方","index":"中证500"},
-    {"asset_id":"sh512100","name":"中证1000ETF南方","index":"中证1000"},
-    {"asset_id":"sz159531","name":"中证2000ETF南方","index":"中证2000"},
-    {"asset_id":"sz159915","name":"创业板ETF易方达","index":"创业板"},
-    {"asset_id":"sz159949","name":"创业板50ETF华安","index":"创业板50"},
-    {"asset_id":"sh588000","name":"科创50ETF华夏","index":"科创50"}
+    {
+      "asset_id": "sh510050",
+      "name": "上证50ETF华夏",
+      "index": "上证50"
+    },
+    {
+      "asset_id": "sh510300",
+      "name": "沪深300ETF华泰柏瑞",
+      "index": "沪深300"
+    },
+    {
+      "asset_id": "sh510500",
+      "name": "中证500ETF南方",
+      "index": "中证500"
+    },
+    {
+      "asset_id": "sh512100",
+      "name": "中证1000ETF南方",
+      "index": "中证1000"
+    },
+    {
+      "asset_id": "sz159531",
+      "name": "中证2000ETF南方",
+      "index": "中证2000"
+    },
+    {
+      "asset_id": "sz159915",
+      "name": "创业板ETF易方达",
+      "index": "创业板"
+    },
+    {
+      "asset_id": "sz159949",
+      "name": "创业板50ETF华安",
+      "index": "创业板50"
+    },
+    {
+      "asset_id": "sh588000",
+      "name": "科创50ETF华夏",
+      "index": "科创50"
+    }
   ],
   "macro_symbols": [
-    {"symbol":"DX-Y.NYB","name":"美元指数 DXY","unit":"指数点"},
-    {"symbol":"GC=F","name":"纽约黄金期货（近月观察代理）","unit":"美元/盎司"},
-    {"symbol":"CL=F","name":"WTI原油期货（近月观察代理）","unit":"美元/桶"},
-    {"symbol":"^TNX","name":"美国10年期国债收益率（市场报价）","unit":"%"}
+    {
+      "symbol": "DX-Y.NYB",
+      "name": "美元指数 DXY",
+      "unit": "指数点"
+    },
+    {
+      "symbol": "GC=F",
+      "name": "纽约黄金期货（近月观察代理）",
+      "unit": "美元/盎司"
+    },
+    {
+      "symbol": "CL=F",
+      "name": "WTI原油期货（近月观察代理）",
+      "unit": "美元/桶"
+    },
+    {
+      "symbol": "^TNX",
+      "name": "美国10年期国债收益率（市场报价）",
+      "unit": "%"
+    }
   ],
-  "unresolved_observations": ["中证金融：请确认具体指数代码后加入 watch_indices", "微盘股：请确认所采用指数口径后加入 watch_indices"],
+  "unresolved_observations": [
+    "中证金融：请确认具体指数代码后加入 watch_indices",
+    "微盘股：请确认所采用指数口径后加入 watch_indices"
+  ],
   "history_bars": 360,
   "max_import_bytes": 104857600,
   "refresh_seconds": 3600,
-  "auto_refresh": true,
-  "network": {"timeout": 10, "workers": 4, "budget_seconds": 240},
-  "ai": {"enabled": true, "command": "codex", "timeout": 300},
-  "indicators": {"ma_periods": [5,20,60,120], "macd_fast": 12, "macd_slow": 26, "macd_signal": 9, "cci_period": 20},
+  "auto_refresh": false,
+  "network": {
+    "timeout": 10,
+    "workers": 4,
+    "budget_seconds": 240
+  },
+  "ai": {
+    "enabled": true,
+    "command": "codex",
+    "timeout": 300,
+    "provider": "codex",
+    "model": "",
+    "deepseek": {
+      "enabled": false,
+      "base_url": "https://api.deepseek.com",
+      "model": "deepseek-flash",
+      "timeout": 180
+    }
+  },
+  "indicators": {
+    "ma_periods": [
+      5,
+      20,
+      60,
+      120
+    ],
+    "macd_fast": 12,
+    "macd_slow": 26,
+    "macd_signal": 9,
+    "cci_period": 20
+  },
   "notes": "ETF观察篮子仅跟踪所列基金份额，不代表全部同指数基金，也不是交易品种映射。"
 }

@@ -61,7 +61,7 @@ class Plans:
     def draft(self, run_id, asset_id):
         run = self.store.get_run(run_id)
         if not run.get("facts") or not run.get("analysis"):
-            raise AppError("missing_analysis", "该轮尚无有效Codex解读，可先自行记录观察计划")
+            raise AppError("missing_analysis", "该轮尚无有效AI解读，可先自行记录观察计划")
         match = next((x for x in run["facts"]["candidates"] if x["asset_id"] == asset_id), None)
         if not match or match.get("excluded"):
             raise AppError("validation_error", "标的不在本轮有效候选范围")
@@ -89,21 +89,22 @@ class Plans:
             "weekly_bars": match["technical"].get("weekly", [])[-12:],
             "trend_facts": match["technical"].get("trend_facts", []),
         }
-        reply = self.engine.bridge.call("plan", input_data)
+        def check_plan(result):
+            if result["asset_id"] != asset_id:
+                raise AppError("invalid_ai_scope", "计划返回了不同标的", status=503)
+            expected_execution = execution["asset_id"] if execution else None
+            if result["execution_asset_id"] != expected_execution:
+                raise AppError("invalid_ai_scope", "计划擅自改变实际交易品种", status=503)
+            if not execution and result["plan_type"] != "observation":
+                raise AppError("invalid_ai_scope", "未指定实际品种时只能形成观察计划", status=503)
+            if set(result["knowledge_refs"]) - known_refs or set(result["evidence_refs"]) - set(input_data["evidence"]):
+                raise AppError("invalid_ai_reference", "计划包含未知知识或事实引用", status=503)
+        reply = self.engine.bridge.call("plan", input_data, check_plan)
         result = reply["result"]
-        if result["asset_id"] != asset_id:
-            raise AppError("invalid_ai_scope", "计划返回了不同标的", status=503)
-        expected_execution = execution["asset_id"] if execution else None
-        if result["execution_asset_id"] != expected_execution:
-            raise AppError("invalid_ai_scope", "计划擅自改变实际交易品种", status=503)
-        if not execution and result["plan_type"] != "observation":
-            raise AppError("invalid_ai_scope", "未指定实际品种时只能形成观察计划", status=503)
-        if set(result["knowledge_refs"]) - known_refs or set(result["evidence_refs"]) - set(input_data["evidence"]):
-            raise AppError("invalid_ai_reference", "计划包含未知知识或事实引用", status=503)
         if not risk:
             result["position_risk"] = "待补充：尚未提供已确认的个人仓位与风险限制；本系统不代填数值。"
             result["missing"] = list(dict.fromkeys(result["missing"] + ["个人仓位与风险规则未提供"]))
-        result.update({"name": match["name"], "run_id": run_id, "origin": "codex", "ai_trace": reply["trace"]})
+        result.update({"name": match["name"], "run_id": run_id, "origin": reply["trace"].get("provider", "codex"), "ai_trace": reply["trace"]})
         return self.store.create("plan", self.validate(result))
 
     def revise(self, ident, payload, expected_revision):
@@ -159,6 +160,8 @@ class Plans:
         plan_ref = payload.get("plan_ref")
         if plan_ref:
             plan = self.store.get_ref(plan_ref)
+            if plan.get("is_deleted"):
+                raise AppError("object_deleted", "关联计划已删除，请先恢复计划", status=409)
             if plan["kind"] != "plan":
                 raise AppError("validation_error", "plan_ref 必须引用计划")
             if plan["status"] != "confirmed":
@@ -188,6 +191,8 @@ class Plans:
 
     def review(self, plan_id, revision=None):
         plan = self.store.get_object(plan_id, revision)
+        if plan.get("is_deleted"):
+            raise AppError("object_deleted", "计划已在回收站，请先恢复后生成新复盘", status=409)
         if plan["kind"] != "plan":
             raise AppError("validation_error", "对象不是计划")
         history = self.store.versions(plan_id)
@@ -198,10 +203,11 @@ class Plans:
         evidence.update({"execution:" + x["ref"]: x["payload"] for x in executions})
         payload = {"plan": plan, "plan_versions": history, "executions": executions,
                    "evidence": evidence, "orders_allowed": False}
-        reply = self.engine.bridge.call("review", payload)
-        for proposal in reply["result"]["knowledge_proposals"]:
-            if set(proposal["evidence_refs"]) - set(evidence):
-                raise AppError("invalid_ai_reference", "复盘引用了未提供的证据", status=503)
+        def check_review(result):
+            for proposal in result["knowledge_proposals"]:
+                if set(proposal["evidence_refs"]) - set(evidence):
+                    raise AppError("invalid_ai_reference", "Review references are not in the supplied evidence", status=503)
+        reply = self.engine.bridge.call("review", payload, check_review)
         content = {**reply["result"], "plan_ref": reference(plan), "execution_refs": [x["ref"] for x in executions],
                    "plan_versions": [x["ref"] for x in history], "ai_trace": reply["trace"], "input_evidence": evidence}
         return self.store.create("review", content, status="generated")
@@ -215,5 +221,5 @@ class Plans:
             raise AppError("not_found", "复盘建议不存在", status=404)
         p = proposals[index]
         return self.knowledge.create(p["kind"], {"title": p["title"], "body": p["body"], "layers": [p["kind"]],
-                                               "source": "Codex复盘提议，待用户确认", "origin_ref": review["ref"],
+                                               "source": "AI复盘提议，待用户确认", "origin_ref": review["ref"],
                                                "evidence": p["evidence_refs"]})

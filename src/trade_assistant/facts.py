@@ -4,9 +4,10 @@ from .indicators import FORMULA_VERSION, calculate
 from .market_time import session_info
 from .providers.eastmoney import eligible
 from .util import AppError, now
+from .volume_price import volume_price, turnover_summary, completed_asof
 
 
-def compute(snapshot, config=None):
+def compute(snapshot, config=None, market_history=None):
     if not isinstance(snapshot, dict) or snapshot.get("schema_version") != 1:
         raise AppError("validation_error", "快照版本或结构无效")
     config = config or snapshot["config_snapshot"]
@@ -29,10 +30,12 @@ def compute(snapshot, config=None):
                "reasons": item.get("reasons", []), "execution_asset": item.get("execution_asset"),
                "quote": quote, "technical": tech, "evidence_id": evidence_id,
                "excluded": item.get("excluded", False), "exclusion_reason": item.get("exclusion_reason")}
+        row["volume_price"] = volume_price(tech)
         evidence[evidence_id] = {"asset_id": aid, "name": item["name"], "latest": tech.get("latest"),
                                  "trend_facts": tech.get("trend_facts", []), "asof": tech.get("asof"),
                                  "source": tech.get("source"), "status": tech["status"],
                                  "limitations": tech.get("reasons", [])}
+        evidence[evidence_id]["volume_price"] = row["volume_price"]
         (candidate_facts if aid in candidate_ids else watches).append(row)
 
     market = snapshot.get("market") or {}
@@ -108,10 +111,21 @@ def compute(snapshot, config=None):
     evidence["data:coverage"] = {"coverage": snapshot.get("coverage", []), "asof": snapshot.get("asof")}
     market_calendar = session_info(snapshot.get("asof"))
     evidence["market:calendar"] = market_calendar
+    exact_rows = {x["date"]: x for x in (market_history or []) if x["date"] <= str(snapshot.get("asof", ""))[:10]}
+    if mf["amount_complete"] and mf["counts_complete"] and not mf["undated_prices"] and completed_asof(mf["asof"]):
+        exact_rows[str(mf["asof"])[:10]] = {"date": str(mf["asof"])[:10], "amount": mf["amount"], "source": "本地实际完整收盘快照"}
+    exact_turnover = {**turnover_summary(list(exact_rows.values())), "scope": "沪深非ST，逐日实际来源目录", "scope_id": "shsz_non_st", "unit": "元"}
+    exchange = snapshot.get("market_turnover") or {}
+    exchange_turnover = {**exchange, **turnover_summary(exchange.get("rows", []))}
+    market_volume = {"exact": exact_turnover, "reference": exchange_turnover,
+                     "current_asof": mf["asof"], "current_amount": mf["amount"], "current_complete": mf["amount_complete"],
+                     "notes": ["全市场量能独立于候选集合", "交易所历史含ST，与严格过滤快照分开呈现；不能拼接计算", "盘中累计成交額不直接与完整日总量比较"]}
+    evidence["market:volume"] = market_volume
     return {"schema_version": 1, "snapshot_id": snapshot["id"], "created_at": now(),
             "asof": snapshot.get("asof"), "formula_version": FORMULA_VERSION, "calendar": market_calendar,
             "candidates": candidate_facts, "watch_indices": watches,
             "market": mf, "industries": snapshot.get("industries", []),
+            "market_volume": market_volume,
             "industry_ranking": snapshot.get("industry_ranking"), "margin": margin_fact,
             "etf_shares": etfs, "macro": macro, "evidence": evidence,
             "coverage": snapshot.get("coverage", []), "gaps": snapshot.get("gaps", []),

@@ -40,7 +40,7 @@ class Store:
         self.path = self.home / "trade.sqlite3"
         with self.connection() as conn:
             version = conn.execute("PRAGMA user_version").fetchone()[0]
-            if version not in (0, 1):
+            if version not in (0, 1, 2):
                 raise AppError("database_version", "数据库版本不受当前程序支持", status=500)
             conn.executescript("""
                 CREATE TABLE IF NOT EXISTS objects (
@@ -58,7 +58,11 @@ class Store:
                     id TEXT PRIMARY KEY, kind TEXT NOT NULL, status TEXT NOT NULL,
                     created_at TEXT NOT NULL, finished_at TEXT, result TEXT, error TEXT
                 );
-                PRAGMA user_version=1;
+                CREATE TABLE IF NOT EXISTS object_lifecycle (
+                    object_id TEXT PRIMARY KEY, is_deleted INTEGER NOT NULL,
+                    updated_at TEXT NOT NULL, actor TEXT NOT NULL
+                );
+                PRAGMA user_version=2;
             """)
 
     @contextmanager
@@ -87,14 +91,16 @@ class Store:
         item = dict(row)
         item["payload"] = json.loads(item["payload"])
         item["ref"] = reference(item)
+        item["is_deleted"] = bool(item.get("is_deleted", False))
         return item
 
     def get_object(self, ident, revision=None):
         with self.connection() as conn:
+            select = "SELECT o.*,COALESCE(l.is_deleted,0) is_deleted FROM objects o LEFT JOIN object_lifecycle l ON o.id=l.object_id "
             if revision is None:
-                row = conn.execute("SELECT * FROM objects WHERE id=? ORDER BY revision DESC LIMIT 1", (ident,)).fetchone()
+                row = conn.execute(select + "WHERE o.id=? ORDER BY revision DESC LIMIT 1", (ident,)).fetchone()
             else:
-                row = conn.execute("SELECT * FROM objects WHERE id=? AND revision=?", (ident, revision)).fetchone()
+                row = conn.execute(select + "WHERE o.id=? AND revision=?", (ident, revision)).fetchone()
         if row is None:
             raise AppError("not_found", "对象或版本不存在", {"id": ident, "revision": revision}, 404)
         return self.object_row(row)
@@ -102,7 +108,7 @@ class Store:
     def get_ref(self, ref):
         return self.get_object(*split_reference(ref))
 
-    def list_objects(self, kind=None, confirmed=False):
+    def list_objects(self, kind=None, confirmed=False, include_deleted=False):
         if kind is not None and kind not in KINDS:
             raise AppError("validation_error", "对象类别无效")
         where, params = [], []
@@ -113,7 +119,10 @@ class Store:
             where.append("status='confirmed'")
         clause = " WHERE " + " AND ".join(where) if where else ""
         # Keep grouping explicit so a draft does not hide an earlier confirmed revision.
-        sql = "SELECT o.* FROM objects o JOIN (SELECT id, MAX(revision) rev FROM objects" + clause + " GROUP BY id) x ON o.id=x.id AND o.revision=x.rev ORDER BY o.created_at DESC"
+        sql = "SELECT o.*,COALESCE(l.is_deleted,0) is_deleted FROM objects o JOIN (SELECT id, MAX(revision) rev FROM objects" + clause + " GROUP BY id) x ON o.id=x.id AND o.revision=x.rev LEFT JOIN object_lifecycle l ON o.id=l.object_id"
+        if not include_deleted:
+            sql += " WHERE COALESCE(l.is_deleted,0)=0"
+        sql += " ORDER BY o.created_at DESC"
         with self.connection() as conn:
             rows = conn.execute(sql, params).fetchall()
         return [self.object_row(row) for row in rows]
@@ -122,6 +131,32 @@ class Store:
         with self.connection() as conn:
             rows = conn.execute("SELECT * FROM objects WHERE id=? ORDER BY revision DESC", (ident,)).fetchall()
         return [self.object_row(row) for row in rows]
+
+    @staticmethod
+    def require_active(conn, ident):
+        row = conn.execute("SELECT is_deleted FROM object_lifecycle WHERE object_id=?", (ident,)).fetchone()
+        if row and row[0]:
+            raise AppError("object_deleted", "记录已在回收站，请恢复后再操作", status=409)
+
+    def lifecycle(self):
+        with self.connection() as conn:
+            return [dict(row) for row in conn.execute("SELECT * FROM object_lifecycle ORDER BY updated_at DESC")]
+
+    def recycle(self, ident, deleted, expected_revision, actor):
+        if type(expected_revision) is not int or type(deleted) is not bool or not isinstance(actor, str) or not actor.strip() or len(actor) > 100:
+            raise AppError("validation_error", "删除/恢复需要对象版本和操作人")
+        with self.connection(True) as conn:
+            row = conn.execute("SELECT kind,revision FROM objects WHERE id=? ORDER BY revision DESC LIMIT 1", (ident,)).fetchone()
+            if not row:
+                raise AppError("not_found", "对象不存在", status=404)
+            if row["kind"] not in ("plan", "execution"):
+                raise AppError("validation_error", "只有计划与执行记录可移入回收站")
+            if row["revision"] != expected_revision:
+                raise AppError("conflict", "对象已有新版本，请刷新后再操作", status=409)
+            old = conn.execute("SELECT is_deleted FROM object_lifecycle WHERE object_id=?", (ident,)).fetchone()
+            if not old or bool(old[0]) != deleted:
+                conn.execute("INSERT INTO object_lifecycle VALUES(?,?,?,?) ON CONFLICT(object_id) DO UPDATE SET is_deleted=excluded.is_deleted,updated_at=excluded.updated_at,actor=excluded.actor", (ident, int(deleted), now(), actor.strip()))
+        return self.get_object(ident)
 
     def create(self, kind, payload, ident=None, status="draft", actor=None):
         ident = ident or new_id()
@@ -146,6 +181,7 @@ class Store:
             raise AppError("validation_error", "修订需要内容及 expected_revision")
         encoded = dumps(payload)
         with self.connection(True) as conn:
+            self.require_active(conn, ident)
             old = conn.execute("SELECT * FROM objects WHERE id=? ORDER BY revision DESC LIMIT 1", (ident,)).fetchone()
             if not old:
                 raise AppError("not_found", "对象不存在", status=404)
@@ -162,6 +198,7 @@ class Store:
         if type(revision) is not int or not isinstance(actor, str) or not actor.strip() or len(actor) > 100:
             raise AppError("validation_error", "确认需要版本与确认人")
         with self.connection(True) as conn:
+            self.require_active(conn, ident)
             row = conn.execute("SELECT * FROM objects WHERE id=? AND revision=?", (ident, revision)).fetchone()
             if not row:
                 raise AppError("not_found", "待确认对象不存在", status=404)
@@ -216,6 +253,17 @@ class Store:
             result.append(item)
         return result
 
+    def market_history(self):
+        from .volume_price import completed_asof
+        rows = {}
+        with self.connection() as conn:
+            for value in conn.execute("SELECT facts FROM runs WHERE facts IS NOT NULL ORDER BY created_at DESC LIMIT 180"):
+                market = (json.loads(value[0]) or {}).get("market", {})
+                if market.get("amount_complete") and market.get("counts_complete") and not market.get("undated_prices") and completed_asof(market.get("asof")):
+                    date = market["asof"][:10]
+                    rows.setdefault(date, {"date": date, "amount": market["amount"], "source": "本地实际完整收盘快照"})
+        return sorted(rows.values(), key=lambda x: x["date"])[-60:]
+
     def create_job(self, kind):
         ident = new_id()
         with self.connection(True) as conn:
@@ -248,6 +296,7 @@ class Store:
             conn.execute("BEGIN")
             objects = [dict(row) for row in conn.execute("SELECT * FROM objects ORDER BY id,revision")]
             runs = [dict(row) for row in conn.execute("SELECT * FROM runs ORDER BY created_at")]
+            lifecycle = [dict(row) for row in conn.execute("SELECT * FROM object_lifecycle")]
         record_ids = set()
         for row in objects:
             trace = json.loads(row["payload"]).get("ai_trace") or {}
@@ -270,11 +319,12 @@ class Store:
             if folder.is_dir() and not folder.is_symlink():
                 records[ident] = {name: (folder / name).read_text(encoding="utf-8") for name in names
                                   if (folder / name).is_file() and not (folder / name).is_symlink()}
-        return {"archive_version": 1, "exported_at": now(), "config": config,
-                "objects": objects, "runs": runs, "ai_records": records}
+        config = dict(config, auto_refresh=False)
+        return {"archive_version": 2, "exported_at": now(), "config": config,
+                "objects": objects, "runs": runs, "ai_records": records, "lifecycle": lifecycle}
 
     def import_data(self, archive):
-        if not isinstance(archive, dict) or archive.get("archive_version") != 1:
+        if not isinstance(archive, dict) or archive.get("archive_version") not in (1, 2):
             raise AppError("validation_error", "迁移文件版本不支持")
         objects, runs = archive.get("objects"), archive.get("runs")
         if not isinstance(objects, list) or not isinstance(runs, list) or len(objects) > 100000 or len(runs) > 10000:
@@ -282,6 +332,18 @@ class Store:
         obj_columns = ("id", "kind", "revision", "status", "payload", "created_at", "confirmed_at", "confirmed_by")
         run_columns = ("id", "status", "created_at", "finished_at", "snapshot", "facts", "analysis", "error", "metadata")
         staged_objects, staged_runs = {}, {}
+        lifecycle = archive.get("lifecycle", [])
+        if not isinstance(lifecycle, list) or len(lifecycle) > 100000:
+            raise AppError("validation_error", "回收站迁移结构无效")
+        seen_lifecycle = set()
+        for row in lifecycle:
+            if not isinstance(row, dict) or set(row) != {"object_id", "is_deleted", "updated_at", "actor"}:
+                raise AppError("validation_error", "回收站字段无效")
+            if not IDENTIFIER.fullmatch(str(row["object_id"])) or type(row["is_deleted"]) is not int or row["is_deleted"] not in (0, 1) or not isinstance(row["updated_at"], str) or not isinstance(row["actor"], str) or not row["actor"].strip():
+                raise AppError("validation_error", "回收站状态或操作人无效")
+            if row["object_id"] in seen_lifecycle:
+                raise AppError("validation_error", "回收站对象重复")
+            seen_lifecycle.add(row["object_id"])
         ai_records = archive.get("ai_records", {})
         if not isinstance(ai_records, dict) or len(ai_records) > 10000:
             raise AppError("validation_error", "AI归档结构不合理")
@@ -367,6 +429,14 @@ class Store:
                 else:
                     conn.execute("INSERT INTO runs VALUES (?,?,?,?,?,?,?,?,?)", [row[k] for k in run_columns])
                     added_runs += 1
+            for row in lifecycle:
+                if object_kinds.get(row["object_id"]) not in ("plan", "execution"):
+                    raise AppError("validation_error", "回收站引用缺少计划或执行对象")
+                old = conn.execute("SELECT * FROM object_lifecycle WHERE object_id=?", (row["object_id"],)).fetchone()
+                if old and dict(old) != row:
+                    raise AppError("conflict", "对象回收站状态有冲突，未覆盖", {"object_id": row["object_id"]}, 409)
+                if not old:
+                    conn.execute("INSERT INTO object_lifecycle VALUES(?,?,?,?)", [row[k] for k in ("object_id", "is_deleted", "updated_at", "actor")])
             for ident, files in ai_records.items():
                 folder = self.home / "ai" / ident
                 folder.mkdir(parents=True, exist_ok=True)
@@ -374,4 +444,4 @@ class Store:
                     path = folder / name
                     if not path.exists():
                         path.write_text(text, encoding="utf-8")
-        return {"objects_added": added_objects, "runs_added": added_runs, "ai_records": len(ai_records)}
+        return {"objects_added": added_objects, "runs_added": added_runs, "ai_records": len(ai_records), "lifecycle": len(lifecycle)}

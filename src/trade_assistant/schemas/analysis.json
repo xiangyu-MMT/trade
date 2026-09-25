@@ -27,6 +27,18 @@
           "items": {
             "type": "string"
           }
+        },
+        "commentary": {
+          "type": "string",
+          "maxLength": 450
+        },
+        "structure": {
+          "type": "string",
+          "maxLength": 450
+        },
+        "mode_summary": {
+          "type": "string",
+          "maxLength": 450
         }
       },
       "required": [
@@ -34,7 +46,10 @@
         "summary",
         "mode_refs",
         "evidence_refs",
-        "against"
+        "against",
+        "commentary",
+        "structure",
+        "mode_summary"
       ],
       "additionalProperties": false
     },
@@ -89,6 +104,14 @@
             "items": {
               "type": "string"
             }
+          },
+          "volume_price_reading": {
+            "type": "string",
+            "maxLength": 250
+          },
+          "strength_reason": {
+            "type": "string",
+            "maxLength": 250
           }
         },
         "required": [
@@ -100,7 +123,9 @@
           "reason",
           "evidence_refs",
           "against",
-          "missing"
+          "missing",
+          "volume_price_reading",
+          "strength_reason"
         ],
         "additionalProperties": false
       }
@@ -145,13 +170,20 @@
         ],
         "additionalProperties": false
       }
+    },
+    "ranked_asset_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
     }
   },
   "required": [
     "market",
     "candidates",
     "limitations",
-    "knowledge_proposals"
+    "knowledge_proposals",
+    "ranked_asset_ids"
   ],
   "additionalProperties": false
 }

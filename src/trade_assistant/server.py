@@ -13,6 +13,8 @@ from .engine import Engine
 from .plans import Plans
 from .report import render
 from .runner import Runner
+from .presentation import select
+from .charts import candles, turnover
 from .util import AppError, dumps
 
 WEB = Path(__file__).parent / "web"
@@ -21,11 +23,14 @@ WEB = Path(__file__).parent / "web"
 class App:
     def __init__(self, settings):
         self.settings = settings
+        config = settings.load()
+        config["auto_refresh"] = False
+        settings.save(config)
         self.engine = Engine(settings)
         self.store, self.knowledge = self.engine.store, self.engine.knowledge
         self.plans = Plans(self.engine)
         self.store.mark_interrupted()
-        self.runner = Runner(settings, self.store, self.engine.cancel)
+        self.runner = Runner(settings, self.store, self.engine.cancel, self.engine.cancelled.clear)
         self.token = secrets.token_hex(32)
         self.runner.start_scheduler(lambda: self.run("timer"))
 
@@ -40,12 +45,19 @@ class App:
                 "knowledge": self.knowledge.list(), "confirmed_knowledge": self.knowledge.list(True),
                 "plans": self.store.list_objects("plan"), "confirmed_plans": self.store.list_objects("plan", confirmed=True),
                 "executions": self.store.list_objects("execution")[:200],
+                "trash": [x for x in self.store.list_objects(include_deleted=True) if x["is_deleted"]],
+                "lifecycle": self.store.lifecycle(),
                 "reviews": self.store.list_objects("review")[:100], "config_path": str(self.settings.path)}
 
     def run_view(self, ident):
         run = self.store.get_run(ident)
         result = {k: run[k] for k in ("id", "status", "created_at", "finished_at", "facts", "analysis", "error", "metadata")}
         result["knowledge_used"] = []
+        if run.get("facts"):
+            result["presentation"] = select(result["facts"], run.get("analysis"))
+            result["charts"] = {x["asset_id"]: {p: candles(x["technical"], p) for p in ("daily", "weekly")} for x in result["facts"]["candidates"]}
+            mv = result["facts"].get("market_volume") or {}
+            result["market_charts"] = {key: turnover((mv.get(key) or {}).get("rows", [])) for key in ("exact", "reference")}
         for ref in (run.get("analysis") or {}).get("knowledge_refs", []):
             try:
                 result["knowledge_used"].append(self.store.get_ref(ref))
@@ -67,6 +79,7 @@ class App:
             if not isinstance(archive, dict):
                 raise AppError("validation_error", "缺少迁移文件内容")
             incoming = validate(archive.get("config"))
+            incoming["auto_refresh"] = False
             original = self.settings.load()
             apply_config = body.get("apply_config", True)
             if type(apply_config) is not bool:
@@ -91,7 +104,7 @@ class App:
             raise AppError("not_found", "分析建议不存在", status=404)
         item = items[index]
         return self.knowledge.create(item["kind"], {"title": item["title"], "body": item["body"],
-                                                   "layers": [item["kind"]], "source": "Codex分析建议，待确认",
+                                                   "layers": [item["kind"]], "source": "AI分析建议，待确认",
                                                    "run_id": run["id"], "evidence": item["evidence_refs"]})
 
 
@@ -197,6 +210,8 @@ def handler_for(app):
                     self.json({"config": None, "raw": app.settings.path.read_text(encoding="utf-8"), "path": str(app.settings.path), "error": exc.as_dict()})
             elif path == "/api/codex":
                 self.json(app.engine.bridge.availability())
+            elif path == "/api/ai":
+                self.json({"config": app.settings.load()["ai"], **app.engine.bridge.credentials.status()})
             elif path == "/api/runs":
                 self.json(app.store.list_runs())
             elif path.startswith("/api/runs/"):
@@ -219,6 +234,8 @@ def handler_for(app):
                 self.json(app.store.versions(path.split("/")[-2]))
             elif path == "/api/executions":
                 self.json(app.store.list_objects("execution"))
+            elif path == "/api/trash":
+                self.json([x for x in app.store.list_objects(include_deleted=True) if x["is_deleted"]])
             elif path == "/api/export":
                 if not app.runner.operation_lock.acquire(False):
                     raise AppError("busy", "请在当前任务结束后导出完整资料", status=409)
@@ -253,8 +270,31 @@ def handler_for(app):
                     self.json({"config": app.settings.save(body.get("config", body))})
                 finally:
                     app.runner.operation_lock.release()
+            elif path == "/api/ai":
+                if not app.runner.operation_lock.acquire(False):
+                    raise AppError("busy", "请在当前任务结束后保存模型配置", status=409)
+                try:
+                    config = app.settings.load()
+                    config["ai"] = body.get("config")
+                    config = validate(config)
+                    if body.get("api_key") is not None:
+                        app.engine.bridge.credentials.save(body["api_key"])
+                    app.settings.save(config)
+                    self.json({"config": config["ai"], **app.engine.bridge.credentials.status()})
+                finally:
+                    app.runner.operation_lock.release()
             elif path == "/api/import":
                 self.json(app.import_data(body))
+            elif path.startswith("/api/objects/"):
+                parts = path.split("/")
+                if len(parts) != 5 or parts[-1] not in ("trash", "restore"):
+                    raise AppError("not_found", "对象操作不存在", status=404)
+                if not app.runner.operation_lock.acquire(False):
+                    raise AppError("busy", "请在分析/复盘结束后删除或恢复记录", status=409)
+                try:
+                    self.json(app.store.recycle(parts[-2], parts[-1] == "trash", body.get("expected_revision"), body.get("actor", "翔宇")))
+                finally:
+                    app.runner.operation_lock.release()
             elif path == "/api/knowledge":
                 self.json(app.knowledge.create(body.get("kind"), body.get("payload")), 201)
             elif path == "/api/knowledge/from-run":

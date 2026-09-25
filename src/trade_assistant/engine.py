@@ -1,9 +1,10 @@
 import threading
 
-from .codex_bridge import CodexBridge
+from .ai_router import AIRouter
 from .collector import Collector
 from .facts import compute
 from .knowledge import Knowledge
+from .presentation import eligible_ids
 from .store import Store
 from .util import AppError, digest, now
 
@@ -14,8 +15,8 @@ class Engine:
         self.store = store or Store(settings.home)
         self.knowledge = Knowledge(self.store)
         self.knowledge.seed()
-        self.bridge = CodexBridge(settings)
         self.cancelled = threading.Event()
+        self.bridge = AIRouter(settings, self.cancelled)
         self.collector = None
 
     def cancel(self):
@@ -33,6 +34,7 @@ class Engine:
                                "reasons": item["reasons"], "execution_asset": item.get("execution_asset"),
                                "excluded": item.get("excluded", False), "evidence_id": item["evidence_id"],
                                "quote": item.get("quote"), "technical_latest": tech.get("latest"),
+                               "volume_price": item.get("volume_price"),
                                "technical_asof": tech.get("asof"), "trend_facts": tech.get("trend_facts", []),
                                "weekly": week[-8:], "status": tech["status"], "missing": tech.get("reasons", [])})
         industry_brief = [{k: row.get(k) for k in ("asset_id", "name", "change_pct", "net_flow", "flow_source", "filters_complete")} for row in facts["industries"]]
@@ -47,6 +49,7 @@ class Engine:
             else:
                 evidence[key] = value
         return {"run_id": run_id, "asof": facts["asof"], "requested_at": now(),
+                "ranking_eligible_ids": eligible_ids(facts),
                 "market_calendar": facts.get("calendar"),
                 "candidates": candidates, "market": facts["market"], "industry_ranking": facts["industry_ranking"],
                 "industry_structure": industry_brief, "evidence": evidence,
@@ -85,11 +88,14 @@ class Engine:
         missing = sorted(set(candidate_map) - seen)
         if missing:
             result["limitations"].append("以下候选本轮未获AI覆盖：" + "、".join(missing))
+        order = result.get("ranked_asset_ids", [])
+        if len(order) != len(set(order)) or set(order) != set(payload["ranking_eligible_ids"]):
+            raise AppError("invalid_ai_ranking", "AI综合排序未完整覆盖可排序候选，或存在重复/越界", status=503)
         return {"requested": len(candidate_map), "covered": len(seen), "missing": missing}
 
     def analyze(self, facts, run_id=None):
         payload = self.analysis_input(facts, run_id)
-        reply = self.bridge.call("analysis", payload)
+        reply = self.bridge.call("analysis", payload, lambda result: self.validate_analysis(result, payload))
         reply["coverage"] = self.validate_analysis(reply["result"], payload)
         reply["knowledge_refs"] = [x["ref"] for x in payload["confirmed_knowledge"]]
         return reply
@@ -106,7 +112,7 @@ class Engine:
                 self.collector = None
             self.store.update_run(ident, snapshot=snapshot)
             progress("计算", "技术指标与全市场盘面")
-            facts = compute(snapshot)
+            facts = compute(snapshot, market_history=self.store.market_history())
             self.store.update_run(ident, facts=facts, metadata={"trigger": trigger, "input_mode": input_mode, "asof": facts["asof"], "snapshot_id": snapshot["id"]})
             reply, ai_error = None, None
             if no_ai:
@@ -114,7 +120,7 @@ class Engine:
             else:
                 if self.cancelled.is_set():
                     raise AppError("cancelled", "本轮已停止，已取得资料保留", status=409)
-                progress("Codex", "正在对照事实与已确认档案推导")
+                progress("AI解读", "对照逻辑、模式与量价；失败时按配置使用后备")
                 try:
                     reply = self.analyze(facts, ident)
                 except AppError as exc:

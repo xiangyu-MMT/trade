@@ -6,8 +6,9 @@ from .util import AppError, CN, now
 
 
 class Runner:
-    def __init__(self, settings, store, cancel):
+    def __init__(self, settings, store, cancel, prepare=None):
         self.settings, self.store, self.cancel_callback = settings, store, cancel
+        self.prepare = prepare or (lambda: None)
         self.operation_lock = threading.Lock()
         self.state_lock = threading.Lock()
         self.stop_event = threading.Event()
@@ -43,6 +44,7 @@ class Runner:
         if not self.operation_lock.acquire(False):
             raise AppError("busy", "已有任务运行中，请等本轮完成或停止后再触发", self.status()["active"], 409)
         try:
+            self.prepare()
             ident = self.store.create_job(kind)
         except Exception:
             self.operation_lock.release()

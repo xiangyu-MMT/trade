@@ -13,3 +13,9 @@ logic_refs 和 mode_refs 必须引用相应种类 confirmed_knowledge 的完整 
 不为板块/指数自行挑选 ETF。实际交易品种只能是 execution_asset 中用户已指定的品种；即便存在映射，实际买卖仍由用户决定并操作。
 knowledge_proposals 可以提出值得归档的总结，但保持提议，不能宣布其已获用户确认；没有必要时返回空数组。
 市场摘要不超过三句话，候选理由和反证简短，避免泛泛而谈和重复堆砌指标。描述数值时一般保留两位小数，原始精确值仍以输入为准。
+
+迭代要求：量价关系是核心技术证据，阅读每个候选的volume_price及全市场market:volume，再结合K线、均线、已确认逻辑与模式。MACD/CCI仅为辅助。不要把候选量能汇总当作全市场量能。market:volume中exact严格沪深非ST与reference交易所含ST历史必须分开解释，不可拼接；若exact缺历史，可以明确以含ST参考序列观察市场背景，不能改称严格统计。
+market.commentary为一句市场点评（不超过80字）；structure为量价、广度、分化的两句理解（不超过120字）；mode_summary为模式与关键冲突（不超过80字）。summary简洁概括，勿复述三段。
+逐候选volume_price_reading写一句有信息量的量价理解（不超过70字）；strength_reason说明与其他候选相比的主要优势/不足（不超过70字）。不堆指标值。
+ranked_asset_ids必须为输入ranking_eligible_ids的完整、无重复排列：按熟悉逻辑的证据、模式适配以及量价/价格结构综合比较，量价是主要技术依据，不能直接沿用输入顺序或stance标签排序。不输出随意评分或编造概率。relative强者仍可保持observe/wait；所有候选都差时说明相对排序并非入场机会。
+只对量价事实中的比较日期进行放缩量判断；current_forming为true时该量价比较止于上一完整日。缺失数据不当零值。

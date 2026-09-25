@@ -36,7 +36,7 @@ def validate_shape(value, schema, path="response"):
             raise AppError("invalid_ai_output", path + " 数组过长", status=503)
         for i, item in enumerate(value):
             validate_shape(item, schema.get("items", {}), "%s[%s]" % (path, i))
-    elif isinstance(value, str) and len(value) > 30000:
+    elif isinstance(value, str) and len(value) > schema.get("maxLength", 30000):
         raise AppError("invalid_ai_output", path + " 文本过长", status=503)
 
 
@@ -82,8 +82,8 @@ class CodexBridge:
                                     text=True, encoding="utf-8", errors="replace", timeout=15)
             message = (result.stdout + result.stderr).lower()
             kind = "ChatGPT" if "chatgpt" in message else "API-key" if "api key" in message else "unknown"
-            return {"available": result.returncode == 0 and kind == "ChatGPT", "auth_kind": kind,
-                    "enabled": config["enabled"]}
+            return {"available": True, "auth_kind": kind, "login_status_code": result.returncode,
+                    "note": "命令可启动；认证类别仅供参考，实际可用性以推导调用为准", "enabled": config["enabled"]}
         except (OSError, subprocess.TimeoutExpired, AppError):
             return {"available": False, "auth_kind": "not-found", "enabled": config["enabled"]}
 
@@ -94,8 +94,6 @@ class CodexBridge:
         if not cfg["enabled"]:
             raise AppError("ai_disabled", "当前配置已关闭 Codex 推导", status=503)
         auth = self.availability()
-        if not auth["available"]:
-            raise AppError("codex_auth", "请在当前电脑用 ChatGPT 会员登录 Codex；本系统不自动切换到付费 API", auth, 503)
         schema_path = RESOURCES / "schemas" / (purpose + ".json")
         template_path = RESOURCES / "prompts" / (purpose + ".txt")
         schema = json.loads(schema_path.read_text(encoding="utf-8"))
@@ -106,18 +104,18 @@ class CodexBridge:
         prompt = template_path.read_text(encoding="utf-8") + "\n\n以下是本次输入资料JSON：\n" + dumps(payload)
         if len(prompt.encode("utf-8")) > 400000:
             raise AppError("ai_input_size", "本轮推导资料过大，请减少候选或归档正文后重试")
-        command = self.command_prefix(cfg["command"]) + ["exec", "--ignore-user-config", "--sandbox", "read-only",
+        command = self.command_prefix(cfg["command"]) + ["exec", "--sandbox", "read-only",
                    "--skip-git-repo-check", "--ephemeral", "--json", "--color", "never",
                    "--output-schema", str(schema_path), "--output-last-message", str(output_path),
                    "-c", "project_doc_max_bytes=0", "-c", 'web_search="disabled"',
                    "-c", 'model_reasoning_effort="medium"']
+        if cfg.get("model"):
+            command.extend(["--model", cfg["model"]])
         for feature in ("shell_tool", "apps", "plugins", "browser_use", "computer_use", "multi_agent",
                         "skill_search", "hooks", "image_generation", "view_image", "sleep_tool", "code_mode_host"):
             command.extend(["--disable", feature])
         command.append("-")
         env = dict(os.environ)
-        for key in ("OPENAI_API_KEY", "CODEX_API_KEY"):
-            env.pop(key, None)
         start = time.monotonic()
         kwargs = {"cwd": str(run_dir), "env": env, "stdin": subprocess.PIPE, "stdout": subprocess.PIPE,
                   "stderr": subprocess.PIPE, "text": True, "encoding": "utf-8", "errors": "replace"}
@@ -129,6 +127,7 @@ class CodexBridge:
         trace = {"purpose": purpose, "created_at": now(), "record_id": run_dir.name,
                  "input_hash": digest(payload), "record": str(run_dir),
                  "auth_kind": auth["auth_kind"], "schema": schema_path.name,
+                 "provider": "codex", "model": cfg.get("model") or "CLI当前配置（未报告具体型号）",
                  "reasoning_effort": "medium", "status": "running"}
         write_json(run_dir / "trace.json", trace)
         try:
