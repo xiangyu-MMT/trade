@@ -22,6 +22,14 @@ class Knowledge:
                     raise
                 self.store.create(item["kind"], item["payload"], item["id"],
                                   status="confirmed", actor="翔宇（需求原话归档）")
+        current = self.store.get_object("technical-system")
+        old_periods = "5日、20日、60日、120日"
+        if current["revision"] == 1 and current["status"] == "confirmed" and old_periods in current["payload"].get("body", ""):
+            payload = dict(current["payload"])
+            payload["body"] = payload["body"].replace(old_periods, "5日、20日")
+            payload["source"] += "；翔宇2026-09-25本轮明确原话：均线只要5日均线和20日均线（REQ-004 R1）"
+            updated = self.store.revise(current["id"], payload, current["revision"])
+            self.store.confirm(updated["id"], updated["revision"], "翔宇（本轮明确原话归档）")
 
     @staticmethod
     def validate(payload):

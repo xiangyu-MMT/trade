@@ -96,6 +96,9 @@ def validate(config):
     ma = indicators.get("ma_periods")
     if not isinstance(ma, list) or not ma or any(type(x) is not int or not 2 <= x <= 500 for x in ma):
         raise AppError("validation_error", "均线周期需要 2–500 的整数列表")
+    if set(ma) not in ({5, 20}, {5, 20, 60, 120}):
+        raise AppError("validation_error", "当前均线仅使用5日、20日，请填写 [5,20]")
+    indicators["ma_periods"] = [5, 20]
     for key in ("macd_fast", "macd_slow", "macd_signal", "cci_period"):
         if type(indicators.get(key)) is not int or not 2 <= indicators[key] <= 500:
             raise AppError("validation_error", "指标参数 " + key + " 无效")

@@ -143,9 +143,7 @@
   "indicators": {
     "ma_periods": [
       5,
-      20,
-      60,
-      120
+      20
     ],
     "macd_fast": 12,
     "macd_slow": 26,

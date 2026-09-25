@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from statistics import mean
 
 from .market_time import is_session_day
+from .indicators import MA_PERIODS
 from .util import CN, number
 
 
@@ -68,7 +69,7 @@ def volume_price(technical):
         elif b["close"] < a["close"]:
             down.append(b["volume"])
     result["up_down_volume_ratio"] = ratio(mean(up) if up else None, mean(down) if down else None)
-    result["ma_support_count"] = sum(last["close"] > mean(b["close"] for b in bars[-n:]) for n in (5, 20, 60, 120) if len(bars) >= n)
+    result["ma_support_count"] = sum(last["close"] > mean(b["close"] for b in bars[-n:]) for n in MA_PERIODS if len(bars) >= n)
     result["eligible"] = result["volume_vs_5"] is not None and result["return_20d_pct"] is not None and last.get("volume", 0) > 0
     pc, vr = result["price_change_pct"], result["volume_vs_previous"]
     if pc is not None:

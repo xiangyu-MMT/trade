@@ -74,7 +74,7 @@ class Engine:
                 "coverage": facts["coverage"], "limitations": facts["limitations"],
                 "confirmed_knowledge": self.knowledge.context(),
                 "requirements": {"holding_period": "几天到几周", "primary_period": "日线", "secondary_period": "周线",
-                                 "industry_definition": "同花顺", "orders_allowed": False}}
+                                 "industry_definition": "同花顺", "moving_averages_days": [5, 20], "orders_allowed": False}}
         payload["input_scope"] = {"industry_details": len(industry_brief), "candidate_count": len(candidates),
                                   "policy": "基础成交额排行榜由程序筛选，AI只接收选定行业详情；全市场盘面只接收汇总事实"}
         def compact(value):

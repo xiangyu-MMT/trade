@@ -4,7 +4,7 @@ import math
 
 from .indicators import sma
 
-PALETTE = {5: "#b5ac86", 20: "#94b4cd", 60: "#b39fc3", 120: "#9fbfac"}
+PALETTE = {5: "#b5ac86", 20: "#94b4cd"}
 UP, DOWN = "#bf6356", "#388674"
 
 
@@ -24,8 +24,12 @@ def candles(technical, period="daily", count=65):
     source = technical.get("weekly" if period == "weekly" else "bars", [])
     if len(source) < 2:
         return '<p class="muted small">暂无足够的真实K线资料</p>'
-    closes = [b["close"] for b in source]
-    mas = {p: sma(closes, p) for p in PALETTE}
+    daily = technical.get("bars", [])
+    daily_closes = [b["close"] for b in daily]
+    mas = {}
+    for p in PALETTE:
+        by_date = dict(zip((b["date"] for b in daily), sma(daily_closes, p)))
+        mas[p] = [by_date.get(b["date"]) for b in source]
     bars = source[-count:]
     offset = len(source) - len(bars)
     values = [v for b in bars for v in (b["high"], b["low"])]
@@ -44,7 +48,7 @@ def candles(technical, period="daily", count=65):
     for p, series in mas.items():
         points = " ".join("%.1f,%.1f" % (x(i), y(v)) for i, v in enumerate(series[offset:]) if v is not None)
         if points:
-            shapes.append('<polyline points="%s" fill="none" stroke="%s" stroke-width="1.2" opacity=".75"/>' % (points, PALETTE[p]))
+            shapes.append('<polyline data-ma="%s" points="%s" fill="none" stroke="%s" stroke-width="1.2" opacity=".75"><title>MA%s日</title></polyline>' % (p, points, PALETTE[p], p))
     width = max(2, min(8, step * .6))
     for i, b in enumerate(bars):
         color = UP if b["close"] >= b["open"] else DOWN

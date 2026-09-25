@@ -7,7 +7,8 @@ const kinds = {logic:'逻辑',technical:'技术',mode:'模式'};
 const statuses = {draft:'待确认',confirmed:'已确认',recorded:'已回填',generated:'AI复盘',running:'运行中',completed:'已完成',partial:'部分资料可用',failed:'失败',interrupted:'已中断'};
 const stances = {candidate:'可关注方向',observe:'观察',wait:'等待'};
 let state = {knowledge:[],confirmed_knowledge:[],plans:[],confirmed_plans:[],executions:[],reviews:[],runs:[]};
-let currentRun = null, configInfo = null, view = 'overview', selectedAsset = '', chartPeriod = 'daily', chartSeries = 'price';
+let currentRun = null, configInfo = null, view = 'overview';
+const chartPeriods = Object.create(null);
 let aiInfo = null;
 let followLatest = true, stateSignature = '', editorSubmit = null, activeJob = null, loading = false, knowledgeFilter = 'all';
 const watchedJobs = new Set();
@@ -130,44 +131,6 @@ function marketChart(m) {
   const bars=values.map((v,i)=>{const width=v/total*560;const r=`<rect x="${x}" y="37" width="${width}" height="39" rx="2" fill="${['#ba5a49','#36866a','#a6b5ab'][i]}"><title>${['上涨','下跌','平盘'][i]} ${v}</title></rect>`;x+=width;return r;}).join('');
   return `<svg viewBox="0 0 600 145" role="img" aria-label="市场涨跌家数"><text x="20" y="20" fill="#5c6f72" font-size="12">${m.counts_complete?'来源目录已覆盖':'仅为已取得范围，非完整市场'} · 统计${num(m.eligible_count,0)}只</text>${bars}<text x="20" y="104" fill="#b64e3e" font-size="13">上涨 ${num(values[0],0)}</text><text x="240" y="104" fill="#247c5d" font-size="13">下跌 ${num(values[1],0)}</text><text x="470" y="104" fill="#667c6f" font-size="13">平盘 ${num(values[2],0)}</text><text x="20" y="131" fill="#5c6f72" font-size="11">剔除北交所/B股/ST；缺报价 ${num(m.unknown_prices,0)}</text></svg>`;
 }
-function plot(technical,period='daily',kind='price') {
-  const all=period==='weekly'?(technical?.weekly||[]):(technical?.bars||[]);
-  const bars=all.slice(-90);
-  if (bars.length<2) return '<div class="empty">历史不足，未绘制图形</div>';
-  const start=all.length-bars.length,series=[];
-  let isBar=false;
-  if (kind==='price'||period==='weekly') {
-    series.push({name:period==='weekly'?'周收盘':'日收盘',color:'#2c536c',values:bars.map(x=>x.close)});
-    if(period==='daily') for (const [p,color] of [['20','#ba9140'],['60','#4b886c'],['120','#92929c']]) {
-      if (technical.ma?.[p]) series.push({name:'MA'+p,color,values:technical.ma[p].slice(start)});
-    }
-  } else if(kind==='volume') {isBar=true;series.push({name:'成交量',color:'#759586',values:bars.map(x=>x.volume)});}
-  else if(kind==='macd') {
-    series.push({name:'DIF',color:'#2c536c',values:(technical.dif||[]).slice(start)},
-      {name:'DEA',color:'#ba9140',values:(technical.dea||[]).slice(start)},
-      {name:'柱形×2',color:'#88aa99',values:(technical.histogram||[]).slice(start),bar:true});
-  } else series.push({name:kind.toUpperCase(),color:'#3d8266',values:(technical[kind]||[]).slice(start)});
-  const values=series.flatMap(s=>s.values).filter(x=>typeof x==='number'&&Number.isFinite(x));
-  if(!values.length) return '<div class="empty">该指标尚未取得有效数值</div>';
-  let min=Math.min(...values),max=Math.max(...values);
-  if(isBar||kind==='macd') {min=Math.min(0,min);max=Math.max(0,max);}
-  const span=max-min||Math.abs(max)*.01||1;
-  min-=span*.06;max+=span*.06;
-  const x=i=>52+i*550/(bars.length-1),y=v=>204-(v-min)/(max-min)*175;
-  let drawing='';
-  for(const s of series) {
-    if(isBar||s.bar) drawing+=s.values.map((v,i)=>typeof v==='number'&&Number.isFinite(v)?`<rect x="${x(i)-2}" y="${Math.min(y(v),y(0))}" width="4" height="${Math.max(.7,Math.abs(y(v)-y(0)))}" fill="${s.color}" opacity=".7"><title>${esc(bars[i]?.date)} ${s.name} ${num(v)}</title></rect>`:'').join('');
-    else {let path='',connected=false;s.values.forEach((v,i)=>{if(typeof v==='number'&&Number.isFinite(v)){path+=(connected?'L':'M')+x(i).toFixed(2)+','+y(v).toFixed(2)+' ';connected=true;}else connected=false;});drawing+=`<path d="${path}" fill="none" stroke="${s.color}" stroke-width="1.8"/>`;}
-  }
-  const guides=[0,.5,1].map(t=>{const v=min+(max-min)*t;return `<line x1="52" x2="602" y1="${y(v)}" y2="${y(v)}" stroke="#e5ece6"/><text x="46" y="${y(v)+4}" text-anchor="end" font-size="10" fill="#74867a">${esc(short(v))}</text>`;}).join('');
-  return `<svg viewBox="0 0 625 239" role="img" aria-label="${esc(series[0].name)}走势图">${guides}${drawing}<text x="52" y="230" fill="#6b7e72" font-size="10">${esc(bars[0].date)}</text><text x="525" y="230" fill="#6b7e72" font-size="10">${esc(bars[bars.length-1].date)}</text></svg><div class="legend">${series.map(s=>`<span><i style="background:${s.color}"></i>${esc(s.name)}</span>`).join('')}</div>`;
-}
-function chartPanel() {
-  const items=currentRun.facts.candidates||[];
-  if(!items.some(x=>x.asset_id===selectedAsset))selectedAsset=items.find(x=>x.kind==='index')?.asset_id||items[0]?.asset_id||'';
-  const item=factItem(selectedAsset);
-  return `<div class="card"><div class="chart-controls"><select id="chart-asset">${items.map(x=>`<option value="${esc(x.asset_id)}" ${selectedAsset===x.asset_id?'selected':''}>${esc(x.name)}</option>`).join('')}</select><select id="chart-period"><option value="daily" ${chartPeriod==='daily'?'selected':''}>日线</option><option value="weekly" ${chartPeriod==='weekly'?'selected':''}>周线</option></select></div><div class="candle-chart">${currentRun.charts?.[selectedAsset]?.[chartPeriod]||''}</div><div class="ma-legend"><span>MA5</span><span>MA20</span><span>MA60</span><span>MA120</span></div><p class="small">${esc(item?.volume_price?.summary||'量价比较不足')}</p></div>`;
-}
 function marketVolumePanel() {
   const v=currentRun.facts.market_volume||{},data=v.series||v.reference||v.exact||{};
   return `<div class="card"><div class="card-head"><div><h3>市场成交额</h3><p class="small muted">完整交易日走势 · 截至 ${esc(data.asof||'待取得')}</p></div><span class="pill neutral">量能</span></div><div class="turnover-chart">${currentRun.market_charts?.turnover||'<p class="small muted">历史资料待取得。</p>'}</div><div class="volume-insight">${esc(data.summary||'历史资料尚不足')}</div><div class="metric-chips">${data.previous_ratio!=null?`<span>前日 ${num(data.previous_ratio)}×</span>`:''}${data.mean5_ratio!=null?`<span>前5日均额 ${num(data.mean5_ratio)}×</span>`:''}${data.mean20_ratio!=null?`<span>前20日均额 ${num(data.mean20_ratio)}×</span>`:''}</div><details><summary>来源与时点</summary><div><p class="small">交易所每日成交额；盘中累计值不与完整日总额直接相除。</p>${list(v.notes||[])}</div></details></div>`;
@@ -184,11 +147,16 @@ function marketIndicatorsPanel() {
   return `<section class="market-history-grid"><article class="card"><div class="card-head"><div><h3>融资余额</h3><p class="small muted">截至 ${esc(m.asof||'待发布')}</p></div><strong class="chart-value">${short(m.latest?.financing_balance,'元')}</strong></div><div class="indicator-chart">${charts.margin||''}</div><div class="volume-insight">较前一交易日 ${delta}</div><p class="small muted">比较日 ${esc(m.previous?.date||'待取得')} · 以实际发布日为准</p></article><article class="card"><div class="card-head"><div><h3>涨停与跌停数量</h3><p class="small muted">截至 ${esc(latest.date||'待取得')}</p></div><span class="small"><b class="up">涨停 ${num(latest.up,0)}</b> / <b class="down">跌停 ${num(latest.down,0)}</b></span></div><div class="indicator-chart">${charts.limits||''}</div><div class="legend"><span><i style="background:#ba5f50"></i>涨停</span><span><i style="background:#358772"></i>跌停</span></div><details><summary>历史覆盖与口径</summary><div><p class="small">${esc(lh.definition||'数据待取得')}；有效 ${lh.covered||0}/${lh.expected||0} 日，缺失处断线。</p></div></details></article>${basisCard('IF')}${basisCard('IM')}</section>`;
 }
 
+function cardPeriod(id) { return chartPeriods[id]||'daily'; }
+function chartToggle(id,period) {
+  return `<div class="period-switch" role="group" aria-label="图表周期"><button type="button" data-action="card-period" data-id="${esc(id)}" data-period="daily" aria-pressed="${period==='daily'}">日线</button><button type="button" data-action="card-period" data-id="${esc(id)}" data-period="weekly" aria-pressed="${period==='weekly'}">周线</button></div>`;
+}
 function candidateCard(item) {
-  const ai=opinion(item.asset_id),v=item.volume_price||{},tech=item.technical||{};
+  const ai=opinion(item.asset_id),v=item.volume_price||{},tech=item.technical||{},period=cardPeriod(item.asset_id);
+  const forming=period==='weekly'?tech.weekly?.slice(-1)[0]?.forming:tech.forming;
   const read=ai?.volume_price_reading||v.summary||'量价历史不足';
   const strength=ai?.strength_reason||ai?.reason||'当前仅提供程序量价事实';
-  return `<article class="card candidate-card"><div class="title-line"><h3>${esc(item.name)}</h3>${ai?pill(ai.stance):'<span class="pill neutral">量价参考</span>'}</div><div class="small muted">${esc(tech.asof||'缺历史')} · ${chartPeriod==='weekly'?'周线':'日线'}${tech.forming?' · 当日形成中':''}</div><div class="candle-chart">${currentRun.charts?.[item.asset_id]?.[chartPeriod]||'<p>图表未取得</p>'}</div><div class="volume-insight">${esc(cut(read,100))}</div><p>${esc(cut(strength,100))}</p>${ai?.against?.[0]?`<p class="counterpoint">留意：${esc(cut(ai.against[0],75))}</p>`:''}<div class="toolbar">${button('查看依据','candidate-detail',`data-id="${esc(item.asset_id)}"`)}${button('拟定计划','draft-plan',`data-id="${esc(item.asset_id)}"`,!ai||Boolean(activeJob))}</div></article>`;
+  return `<article class="card candidate-card" data-asset-id="${esc(item.asset_id)}" data-chart-period="${period}"><div class="title-line"><h3>${esc(item.name)}</h3>${ai?pill(ai.stance):'<span class="pill neutral">量价参考</span>'}</div><div class="card-chart-tools"><span class="small muted">${esc(tech.asof||'缺历史')}${forming?' · 形成中':''}</span>${chartToggle(item.asset_id,period)}</div><div class="candle-chart">${currentRun.charts?.[item.asset_id]?.[period]||'<p>图表未取得</p>'}</div><div class="ma-legend"><span>MA5日</span><span>MA20日</span>${period==='weekly'?'<small>周K结束日取样</small>':''}</div><div class="volume-insight">${esc(cut(read,100))}</div><p>${esc(cut(strength,100))}</p>${ai?.against?.[0]?`<p class="counterpoint">留意：${esc(cut(ai.against[0],75))}</p>`:''}<div class="toolbar">${button('查看依据','candidate-detail',`data-id="${esc(item.asset_id)}"`)}${button('拟定计划','draft-plan',`data-id="${esc(item.asset_id)}"`,!ai||Boolean(activeJob))}</div></article>`;
 }
 
 function coveragePanel() {
@@ -214,7 +182,7 @@ function marginTable() {
 function renderCandidates() {
   if(!currentRun?.facts)return emptyReport();
   const p=currentRun.presentation||{},visible=(p.groups||[]).reduce((n,g)=>n+g.asset_ids.length,0);
-  return `${runChooser()}<div class="section-title"><div><h2>候选与依据</h2><p class="small muted">已分析 ${p.analyzed_count||0} 项 · 常规展示 ${visible} 项 · ${esc(p.label||'等待排序')}</p></div><select id="chart-period" style="max-width:125px"><option value="daily" ${chartPeriod==='daily'?'selected':''}>日线量价</option><option value="weekly" ${chartPeriod==='weekly'?'selected':''}>周线量价</option></select></div><div class="ma-legend"><span>MA5</span><span>MA20</span><span>MA60</span><span>MA120</span><small>悬停蜡烛可看对应日期开高低收与量</small></div>${(p.groups||[]).filter(g=>g.asset_ids.length).map(g=>`<section class="candidate-group"><div class="section-title"><h2>${esc(g.title)}</h2><span class="small muted">${g.asset_ids.length} 项</span></div><div class="candidate-grid">${g.asset_ids.map(factItem).filter(Boolean).map(candidateCard).join('')}</div></section>`).join('')}<p class="small muted">成交额前十行业实际分析 ${p.dynamic_analyzed||0} 项，只展示其中最强三项；固定关注保留，同一对象合并展示。完整分析记录保存在本轮历史中。</p>${coveragePanel()}`;
+  return `${runChooser()}<div class="section-title"><div><h2>候选与依据</h2><p class="small muted">已分析 ${p.analyzed_count||0} 项 · 常规展示 ${visible} 项 · ${esc(p.label||'等待排序')}</p></div></div><div class="ma-legend"><span>MA5日</span><span>MA20日</span><small>悬停蜡烛可看对应日期开高低收与量</small></div>${(p.groups||[]).filter(g=>g.asset_ids.length).map(g=>`<section class="candidate-group"><div class="section-title"><h2>${esc(g.title)}</h2><span class="small muted">${g.asset_ids.length} 项</span></div><div class="candidate-grid">${g.asset_ids.map(factItem).filter(Boolean).map(candidateCard).join('')}</div></section>`).join('')}<p class="small muted">成交额前十行业实际分析 ${p.dynamic_analyzed||0} 项，只展示其中最强三项；固定关注保留，同一对象合并展示。完整分析记录保存在本轮历史中。</p>${coveragePanel()}`;
 }
 
 function planCard(p) {
@@ -263,7 +231,7 @@ function openEditor(title,body,submit=null,label='保存') {
 }
 function candidateDetail(id) {
   const item=factItem(id);if(!item)return;const a=opinion(id),t=item.technical||{},v=item.volume_price||{},last=t.latest||{};
-  openEditor(item.name,`<div class="candle-chart">${currentRun.charts?.[id]?.[chartPeriod]||''}</div><div class="ma-legend"><span>MA5</span><span>MA20</span><span>MA60</span><span>MA120</span></div><h3>量价理解</h3><p>${esc(a?.volume_price_reading||v.summary||'资料不足')}</p><p class="small muted">比较截至 ${esc(v.asof||'未知')} ${v.current_forming?'（当前日线形成中，比较使用最近完整日）':''}</p><h3>综合强弱</h3><p>${esc(a?.strength_reason||a?.reason||'未获得AI综合解读')}</p><div class="metric-chips"><span>前5日量比 ${num(v.volume_vs_5)}×</span><span>前20日量比 ${num(v.volume_vs_20)}×</span><span>20日涨幅 ${num(v.return_20d_pct)}%</span></div><details><summary>逻辑、模式与反证</summary><div>${list(a?.logic_refs?.map(knowledgeName))}${list(a?.mode_refs?.map(knowledgeName))}${list(a?.against)}${list(a?.missing)}${list(v.missing)}</div></details><details><summary>辅助指标、原始依据与来源</summary><div><p class="small">MACD DIF ${num(last.dif)} / DEA ${num(last.dea)} · OBV ${short(last.obv)} · CCI ${num(last.cci)}</p>${list(a?.evidence_refs?.map(evidenceName))}<p class="small muted">${esc(t.adjustment||'')} · ${esc(t.volume_unit||'')} · ${esc(t.source||'')}</p>${list(t.reasons)}</div></details>`);
+  openEditor(item.name,`<div class="candle-chart">${currentRun.charts?.[id]?.[cardPeriod(id)]||''}</div><div class="ma-legend"><span>MA5日</span><span>MA20日</span></div><h3>量价理解</h3><p>${esc(a?.volume_price_reading||v.summary||'资料不足')}</p><p class="small muted">比较截至 ${esc(v.asof||'未知')} ${v.current_forming?'（当前日线形成中，比较使用最近完整日）':''}</p><h3>综合强弱</h3><p>${esc(a?.strength_reason||a?.reason||'未获得AI综合解读')}</p><div class="metric-chips"><span>前5日量比 ${num(v.volume_vs_5)}×</span><span>前20日量比 ${num(v.volume_vs_20)}×</span><span>20日涨幅 ${num(v.return_20d_pct)}%</span></div><details><summary>逻辑、模式与反证</summary><div>${list(a?.logic_refs?.map(knowledgeName))}${list(a?.mode_refs?.map(knowledgeName))}${list(a?.against)}${list(a?.missing)}${list(v.missing)}</div></details><details><summary>辅助指标、原始依据与来源</summary><div><p class="small">MACD DIF ${num(last.dif)} / DEA ${num(last.dea)} · OBV ${short(last.obv)} · CCI ${num(last.cci)}</p>${list(a?.evidence_refs?.map(evidenceName))}<p class="small muted">${esc(t.adjustment||'')} · ${esc(t.volume_unit||'')} · ${esc(t.source||'')}</p>${list(t.reasons)}</div></details>`);
 }
 
 function planDetail(id) {
@@ -304,6 +272,14 @@ function executionForm(ref='') {
 }
 
 async function action(target) {
+  if(target.dataset.action==='card-period'){
+    const id=target.dataset.id,period=target.dataset.period,item=factItem(id);
+    if(!item||!['daily','weekly'].includes(period))return;
+    chartPeriods[id]=period;
+    const card=target.closest('.candidate-card');
+    if(card){const wrapper=document.createElement('div');wrapper.innerHTML=candidateCard(item);const replacement=wrapper.firstElementChild;card.replaceWith(replacement);replacement.querySelector(`[data-period="${period}"]`).focus({preventScroll:true});}
+    return;
+  }
   if(target.dataset.action==='go-plans'){view='plans';render();return;}
   if(['trash','restore'].includes(target.dataset.action)){
     const remove=target.dataset.action==='trash';
@@ -374,9 +350,7 @@ document.addEventListener('change',async event=>{
     }else if(target.id==='run-select'){
       followLatest=target.value==='latest';const id=followLatest?state.latest_report_id:target.value;
       if(id)currentRun=await api('/api/runs/'+encodeURIComponent(id));render();
-    }else if(target.id==='chart-asset'){selectedAsset=target.value;render();}
-    else if(target.id==='chart-period'){chartPeriod=target.value;render();}
-    else if(target.id==='chart-series'){chartSeries=target.value;render();}
+    }
     else if(target.id==='knowledge-filter'){knowledgeFilter=target.value;render();}
     else if(target.id==='import-file'){
       const file=target.files[0];if(!file)return;

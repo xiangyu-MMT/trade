@@ -5,7 +5,8 @@ from datetime import datetime
 from .util import CN, number
 from .market_time import session_info, week_forming
 
-FORMULA_VERSION = "p03-indicators-1"
+FORMULA_VERSION = "p03-indicators-2"
+MA_PERIODS = (5, 20)
 
 
 def sma(values, period):
@@ -89,6 +90,7 @@ def weekly(bars):
 
 
 def calculate(history, parameters):
+    parameters = dict(parameters, ma_periods=list(MA_PERIODS))
     bars, rejected = [], 0
     for raw in history.get("bars", []):
         try:
