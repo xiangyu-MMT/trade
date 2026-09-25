@@ -143,6 +143,9 @@ class Collector:
             if item["kind"] == "stock" and item.get("quote") and not eligible(item["quote"]):
                 item["excluded"] = True
                 item["exclusion_reason"] = "不在沪深非ST范围"
+            if item["kind"] == "stock" and item["asset_id"] not in market_by_id:
+                item["excluded"] = True
+                item["exclusion_reason"] = "未在本轮获取的沪深A股目录中确认该个股，不将其作为已核实候选"
 
         market_day = (market.get("asof") or ranking.get("date") or "")[:10]
         if not market_day:

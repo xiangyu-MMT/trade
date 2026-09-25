@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from .config import SYMBOL
+from .config import TRADABLE_SYMBOL
 from .knowledge import Knowledge
 from .store import reference, split_reference
 from .util import AppError, CN, number, now, require_text
@@ -22,7 +22,7 @@ class Plans:
         if payload.get("plan_type") not in ("observation", "action"):
             raise AppError("validation_error", "计划类型必须为 observation 或 action")
         execution = payload.get("execution_asset_id")
-        if execution is not None and not SYMBOL.fullmatch(str(execution)):
+        if execution is not None and not TRADABLE_SYMBOL.fullmatch(str(execution)):
             raise AppError("validation_error", "实际交易品种须是明确的沪深ETF/个股代码")
         if payload["plan_type"] == "action" and not execution:
             raise AppError("validation_error", "具体品种计划需要实际ETF/个股，板块指数应保存为观察计划")
@@ -134,7 +134,7 @@ class Plans:
         data["asset_id"] = require_text(payload.get("asset_id"), "实际品种或观察标的", 100)
         if payload.get("action") not in ("buy", "sell", "note"):
             raise AppError("validation_error", "记录动作应为 buy、sell 或 note")
-        if payload["action"] in ("buy", "sell") and not SYMBOL.fullmatch(data["asset_id"]):
+        if payload["action"] in ("buy", "sell") and not TRADABLE_SYMBOL.fullmatch(data["asset_id"]):
             raise AppError("validation_error", "买卖回填需要实际ETF或个股代码")
         raw_time = require_text(payload.get("occurred_at"), "实际发生时间", 40)
         try:

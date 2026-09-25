@@ -9,6 +9,8 @@ from .util import AppError, PROJECT, write_json
 DEFAULT = Path(__file__).parent / "defaults" / "config.json"
 SYMBOL = re.compile(r"^(?:sh|sz)\d{6}$")
 INDEX_SYMBOL = re.compile(r"^(?:sh|sz|csi)\d{6}$")
+STOCK_SYMBOL = re.compile(r"^(?:sh(?:60|68)|sz(?:00|30))\d{4}$")
+TRADABLE_SYMBOL = re.compile(r"^(?:sh(?:60|68|50|51|52|56|58)|sz(?:00|30|15|16))\d{4}$")
 
 
 def validate(config):
@@ -39,6 +41,8 @@ def validate(config):
                 raise AppError("validation_error", key + " 的 asset_id 格式应为 sh000300 或 sz399006")
             if not isinstance(row.get("name"), str) or not row["name"].strip():
                 raise AppError("validation_error", key + " 的对象需要名称")
+            if key == "stocks" and not STOCK_SYMBOL.fullmatch(row["asset_id"]):
+                raise AppError("validation_error", "stocks 只填写沪深A股代码；指数请放入 indices，不能作为可交易个股")
             if key in ("indices", "stocks"):
                 ids.append(row["asset_id"])
     if len(ids) != len(set(ids)):
@@ -47,7 +51,7 @@ def validate(config):
     if not isinstance(mapping, dict):
         raise AppError("validation_error", "execution_mappings 必须是对象")
     for source, row in mapping.items():
-        if not isinstance(source, str) or not isinstance(row, dict) or not SYMBOL.fullmatch(str(row.get("asset_id", ""))):
+        if not isinstance(source, str) or not isinstance(row, dict) or not TRADABLE_SYMBOL.fullmatch(str(row.get("asset_id", ""))):
             raise AppError("validation_error", "交易映射需要来源 ID 及明确的 ETF/个股 asset_id")
         if not isinstance(row.get("name"), str) or not row["name"].strip():
             raise AppError("validation_error", "交易映射需要名称")

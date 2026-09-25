@@ -68,7 +68,7 @@ class Engine:
             refs(row["logic_refs"], allowed_logic, "逻辑")
             refs(row["mode_refs"], allowed_modes, "模式")
             refs(row["evidence_refs"], evidence, "事实")
-            if row["stance"] == "candidate" and (not row["logic_refs"] or not row["evidence_refs"] or candidate_map[aid]["excluded"]):
+            if row["stance"] == "candidate" and (not row["logic_refs"] or not row["evidence_refs"] or candidate_map[aid]["excluded"] or candidate_map[aid]["status"] == "missing"):
                 raise AppError("invalid_ai_basis", "可关注候选缺乏已确认逻辑/证据，或属于排除范围", {"asset_id": aid}, 503)
         for proposal in result["knowledge_proposals"]:
             refs(proposal["evidence_refs"], evidence, "事实")
