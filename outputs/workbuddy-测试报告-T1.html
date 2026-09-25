@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>P03 · trade 测试报告 T1</title>
+<style>
+:root{
+  --bg:#f4f7f5; --card:#fff; --line:#dde7e1; --text:#16303a; --muted:#5b7078;
+  --green:#17604d; --green-soft:#eef5f1; --green-line:#b9d5c9;
+  --amber:#8a5a15; --amber-soft:#fdf6ec; --amber-line:#e3c99e;
+  --blue:#2f5f7d; --blue-soft:#eef3f7; --blue-line:#c2d6e3;
+  --red:#a8452f;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--text);
+  font:15.5px/1.75 -apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  -webkit-font-smoothing:antialiased}
+main{max-width:1180px;margin:0 auto;padding:32px 20px 72px}
+h1{font-size:27px;line-height:1.35;margin:0 0 8px}
+h2{font-size:20px;margin:42px 0 14px;padding-left:12px;border-left:4px solid var(--green);line-height:1.4}
+h3{font-size:16px;margin:22px 0 8px}
+p{margin:10px 0}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.9em;
+  background:#eef3f0;color:#1d5a4b;padding:1px 5px;border-radius:5px;word-break:break-all}
+.hero{background:linear-gradient(160deg,#ffffff 0%,#f0f7f3 100%);border:1px solid var(--line);
+  border-radius:18px;padding:26px 28px;box-shadow:0 1px 2px rgba(22,48,58,.04)}
+.hero .eyebrow{font-size:12.5px;letter-spacing:.14em;color:var(--green);font-weight:700}
+.hero .lede{font-size:16.5px;line-height:1.8;margin:14px 0 0}
+.verdict{display:flex;gap:14px;flex-wrap:wrap;margin:18px 0 0}
+.vpill{border-radius:12px;padding:10px 16px;font-size:14px;font-weight:700;border:1px solid}
+.vpill.ok{background:#e9f6ef;border-color:#a9d8c0;color:#136c4a}
+.vpill.warn{background:var(--amber-soft);border-color:var(--amber-line);color:var(--amber)}
+.vpill.info{background:var(--blue-soft);border-color:var(--blue-line);color:var(--blue)}
+.meta{display:flex;flex-wrap:wrap;gap:8px 22px;margin-top:18px;padding-top:16px;border-top:1px dashed var(--line);font-size:12.5px;color:var(--muted)}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin:18px 0}
+.stat{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px}
+.stat b{display:block;font-size:26px;line-height:1.2;color:var(--green)}
+.stat span{font-size:12.5px;color:var(--muted)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px 22px;margin:16px 0;
+  box-shadow:0 1px 2px rgba(22,48,58,.035)}
+figure{margin:0}
+figure svg{display:block;width:100%;height:auto}
+figcaption{font-size:12.5px;color:var(--muted);margin-top:12px;padding-top:10px;border-top:1px dashed var(--line)}
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:14px;background:#fff}
+table{border-collapse:collapse;width:100%;min-width:660px;font-size:13.8px}
+th,td{text-align:left;padding:10px 14px;border-bottom:1px solid #e9efeb;vertical-align:top}
+th{background:#f3f8f5;font-weight:700;color:#14483c;font-size:13px;white-space:nowrap}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover{background:#fafcfb}
+td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.pass{color:#136c4a;font-weight:700}
+.ok-row{background:#fbfefc}
+.notice{background:#fffdf6;border:1px solid var(--amber-line);border-radius:12px;padding:13px 16px;font-size:13.5px;color:#6b4a12;margin:18px 0}
+ul.tight{margin:8px 0;padding-left:22px}
+ul.tight li{margin:5px 0}
+.footer{margin-top:46px;padding-top:20px;border-top:1px solid var(--line);font-size:12.5px;color:var(--muted);line-height:1.9}
+@media(max-width:700px){main{padding:20px 14px 56px}h1{font-size:21px}}
+</style>
+</head>
+<body>
+<main>
+
+<div class="hero">
+  <div class="eyebrow">P03 / trade · 测试报告（第 1 轮）</div>
+  <h1>测试用例与执行结果</h1>
+  <p class="lede">被测实现：<code>a336be3</code>（I5）。自动化用例 <b>272 项全部通过</b>，另用 Python 3.8 复跑一遍同样全绿；真实数据链路 3 轮（取数、计算、AI 推导）全部打通。<b>未发现实现缺陷。</b></p>
+  <div class="verdict">
+    <span class="vpill ok">自动化用例 272 / 272 通过</span>
+    <span class="vpill ok">真实链路 3 轮通过</span>
+    <span class="vpill info">缺陷 0 条</span>
+    <span class="vpill warn">待你签测试轮次</span>
+  </div>
+  <div class="meta">
+    <span>测试方：小步</span>
+    <span>时间：2026-09-25（Asia/Shanghai）</span>
+    <span>用例：<code>05-测试用例/P03-测试用例-T1.md</code>（126 条 → 272 项断言）</span>
+    <span>执行记录：<code>records/workbuddy-测试执行-T1.md</code></span>
+  </div>
+</div>
+
+<div class="notice">
+  这份报告只到<strong>测试执行</strong>这一步。<strong>独立验收要等你在对话里对这条测试轮次明确签字</strong>之后才做；实现提交 <code>a336be3</code> 的签收栏也还空着。另外按你「不动其他文件」的要求，任务卡里的「测试与验收区」本轮没有回填。
+</div>
+
+<h2>一、一页看懂</h2>
+<div class="stats">
+  <div class="stat"><b>272</b><span>自动化断言组（全部通过）</span></div>
+  <div class="stat"><b>2</b><span>解释器版本复跑（3.13 / 3.8）</span></div>
+  <div class="stat"><b>8.8s</b><span>自动化套件总耗时</span></div>
+  <div class="stat"><b>126</b><span>用例条目，覆盖 9 张任务卡</span></div>
+  <div class="stat"><b>3</b><span>真实链路轮次（取数/计算/AI）</span></div>
+  <div class="stat"><b>0</b><span>缺陷</span></div>
+</div>
+
+<h2>二、测了什么</h2>
+<div class="tablewrap">
+<table>
+<thead><tr><th>层</th><th>手段</th><th>覆盖内容</th><th>结果</th></tr></thead>
+<tbody>
+<tr><td><b>L1 单元 / 离线</b></td><td>直接调用被测模块，构造离线夹具</td><td>配置校验、指标计算、量价事实、全市场统计、排序与呈现、图表生成、存储与版本、回收站、计划回填复盘、AI 路由与引用校验</td><td class="pass">通过</td></tr>
+<tr><td><b>L2 接口集成</b></td><td>用随机端口起真实本机服务，发真实 HTTP 请求</td><td>页面与静态资源、读接口、写接口三重鉴权、请求校验、错误信封、报告导出、归档导出、任务互斥、崩溃残留标记、命令行入口</td><td class="pass">通过</td></tr>
+<tr><td><b>L3 真实链路</b></td><td>真实免费数据源 + 真实 Codex 调用</td><td>取数（420 次网络请求）、事实计算、AI 推导（22/22 覆盖）</td><td class="pass">通过</td></tr>
+<tr><td><b>L4 浏览器交互</b></td><td>人工观察</td><td>勾选动画、布局细节</td><td>未执行（已用前端源码契约断言替代）</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>用例在各模块的分布</h3>
+<figure class="card">
+<svg viewBox="0 0 1000 450" role="img" aria-label="各测试文件的用例数量条形图">
+  <g font-size="12.5" fill="#16303a">
+    <text x="0" y="22" font-size="13" font-weight="700" fill="#17604d">每个测试文件的断言组数量（全部通过）</text>
+  </g>
+  <g font-size="12">
+    <text x="0" y="60" fill="#2c4a52">test_server_api</text>
+    <text x="0" y="94" fill="#2c4a52">test_plans</text>
+    <text x="0" y="128" fill="#2c4a52">test_config</text>
+    <text x="0" y="162" fill="#2c4a52">test_store</text>
+    <text x="0" y="196" fill="#2c4a52">test_engine_validate</text>
+    <text x="0" y="230" fill="#2c4a52">test_facts</text>
+    <text x="0" y="264" fill="#2c4a52">test_presentation</text>
+    <text x="0" y="298" fill="#2c4a52">test_charts</text>
+    <text x="0" y="332" fill="#2c4a52">test_volume_price</text>
+    <text x="0" y="366" fill="#2c4a52">test_indicators</text>
+    <text x="0" y="400" fill="#2c4a52">test_ai_router</text>
+  </g>
+  <g>
+    <rect x="200" y="48" width="620" height="18" rx="5" fill="#2f8f6d"/><text x="832" y="62" fill="#17604d" font-size="12" font-weight="700">50</text>
+    <rect x="200" y="82" width="484" height="18" rx="5" fill="#3d9a78"/><text x="696" y="96" fill="#17604d" font-size="12" font-weight="700">39</text>
+    <rect x="200" y="116" width="360" height="18" rx="5" fill="#4aa585"/><text x="572" y="130" fill="#17604d" font-size="12" font-weight="700">29</text>
+    <rect x="200" y="150" width="335" height="18" rx="5" fill="#57b092"/><text x="547" y="164" fill="#17604d" font-size="12" font-weight="700">27</text>
+    <rect x="200" y="184" width="273" height="18" rx="5" fill="#63ba9e"/><text x="485" y="198" fill="#17604d" font-size="12" font-weight="700">22</text>
+    <rect x="200" y="218" width="236" height="18" rx="5" fill="#6fc3aa"/><text x="448" y="232" fill="#17604d" font-size="12" font-weight="700">19</text>
+    <rect x="200" y="252" width="236" height="18" rx="5" fill="#7bccb6"/><text x="448" y="266" fill="#17604d" font-size="12" font-weight="700">19</text>
+    <rect x="200" y="286" width="223" height="18" rx="5" fill="#87d4c1"/><text x="435" y="300" fill="#17604d" font-size="12" font-weight="700">18</text>
+    <rect x="200" y="320" width="211" height="18" rx="5" fill="#93dbcc"/><text x="423" y="334" fill="#17604d" font-size="12" font-weight="700">17</text>
+    <rect x="200" y="354" width="198" height="18" rx="5" fill="#9fe2d7"/><text x="410" y="368" fill="#17604d" font-size="12" font-weight="700">16</text>
+    <rect x="200" y="388" width="198" height="18" rx="5" fill="#abe9e1"/><text x="410" y="402" fill="#17604d" font-size="12" font-weight="700">16</text>
+  </g>
+  <g stroke="#e3ebe6"><path d="M200 40V418"/></g>
+  <text x="200" y="436" fill="#7b8d92" font-size="11">0</text>
+  <text x="510" y="436" fill="#7b8d92" font-size="11">25</text>
+  <text x="815" y="436" fill="#7b8d92" font-size="11">50</text>
+</svg>
+<figcaption>共 272 项断言组。数量最多的 <code>test_server_api</code>（50 项）验证接口鉴权与运行调度；<code>test_plans</code>（39 项）验证计划、回填与复盘的完整闭环。</figcaption>
+</figure>
+
+<h2>三、按任务卡核对覆盖</h2>
+<div class="tablewrap">
+<table>
+<thead><tr><th>任务卡</th><th>目标</th><th>重点验证的行为</th><th>结果</th></tr></thead>
+<tbody>
+<tr class="ok-row"><td>TASK-001</td><td>候选配置与免费数据接入</td><td>配置全量校验规则、凭据拒写入、取数并行与单点失败不炸全盘、行业别名、候选去重、缺口记录</td><td class="pass">通过</td></tr>
+<tr class="ok-row"><td>TASK-002</td><td>交易知识档案与确认记录</td><td>版本化（<code>id@版本</code>）、确认留痕、过期草稿保护、草稿不遮盖已确认版本、引用格式</td><td class="pass">通过</td></tr>
+<tr class="ok-row"><td>TASK-003</td><td>技术指标与全市场盘面计算</td><td>MA/EMA/OBV/CCI 数学正确性、非法 K 线丢弃、周线合成、涨跌家数范围、成交额口径、基差与涨跌停历史</td><td class="pass">通过</td></tr>
+<tr class="ok-row"><td>TASK-004</td><td>Codex 推导与候选解释</td><td>引用校验四类拦截（越界引用、越界候选、依据不足、排序不完整）、未覆盖候选入限制、调用留档</td><td class="pass">通过</td></tr>
+<tr class="ok-row"><td>TASK-005</td><td>交易计划、执行回填与复盘</td><td>观察/具体计划分流、确认门槛、回填偏差识别、复盘证据校验、回收站与下游阻断</td><td class="pass">通过</td></tr>
+<tr class="ok-row"><td>TASK-006</td><td>HTML 交互页面与跨平台运行</td><td>三重鉴权、请求校验、错误信封、报告自包含、归档不含凭据、任务互斥、单实例锁、崩溃残留标记</td><td class="pass">通过</td></tr>
+<tr class="ok-row"><td>TASK-007</td><td>模型后备、量价排序与图表迭代</td><td>降级链（Codex→DeepSeek）、取消不降级、来源如实记录、量价排序回退与标注、K 线图默认 MA20</td><td class="pass">通过</td></tr>
+<tr class="ok-row"><td>TASK-008</td><td>市场图表与 AI 范围修订</td><td>行业输入收敛（14 而非 90）、成交额全口径、融资/基差/涨跌停曲线、不补零</td><td class="pass">通过</td></tr>
+<tr class="ok-row"><td>TASK-009</td><td>小图独立周期与 MA5/20</td><td>计算只用 5/20（显示配置不污染计算）、每卡独立周期、默认只 MA20、浏览器本地保持、四条可选</td><td class="pass">通过</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2>四、真实链路实测（不是模拟数据）</h2>
+<p>自动化用例全部用离线夹具，因此另跑 3 轮真实链路做交叉验证。原始输出在 <code>tests/_evidence/l3-real-data-T1.txt</code>。</p>
+<div class="tablewrap">
+<table>
+<thead><tr><th>轮次</th><th>实测结果</th></tr></thead>
+<tbody>
+<tr><td><b>R1 取数</b></td><td>约 <b>3 分 16 秒</b>完成，420 次网络请求、缺口 1 条；快照 <code>dd097582</code>；源数据日期 <b>2026-09-24</b>（9-25 为已核实休市，未冒充当日行情）；22 候选 / 23 份有效历史；行业从 90 收敛到 <b>14</b> 个进入候选</td></tr>
+<tr><td><b>R2 计算</b></td><td>涨跌家数 <b>1030 / 3872 / 118</b>，合格证券 5020（排除 548）；成交额 <b>1.6552 万亿元</b>、口径 <code>shsz_a</code>、来源「交易所公布沪深A股成交额」；涨停 51 / 跌停 11 / 炸板 10、封板率 0.836；量能序列 25 行（较前一交易日减少 6.3%）；IF/IM 基差各 25 行；22/22 候选可排序</td></tr>
+<tr><td><b>R3 AI 推导</b></td><td><code>provider=codex</code>、<b>未降级</b>、退出码 0、耗时 <b>246.1 秒</b>、覆盖 <b>22/22</b>、引用校验通过；结论「缩量普跌，局部防御，尚无三层共振」，立场分布 <b>0 可关注 / 12 观察 / 10 等待</b></td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>真实数据反过来印证了几条需求边界</h3>
+<div class="tablewrap">
+<table>
+<thead><tr><th>需求要求</th><th>实测印证</th></tr></thead>
+<tbody>
+<tr><td>行业只分析选定范围，不把 90 个行业全送给 AI（REQ-003）</td><td>快照内行业详情 <b>14</b> 个；AI 自述「仅分析 14 个已选行业详情；90 个行业排名沿用程序结果」</td></tr>
+<tr><td>市场成交额统一为沪深A股全口径，不写「含 ST」（REQ-003）</td><td><code>amount_scope=shsz_a</code>，直接采用交易所公布值，页面对应文案无「含 ST」</td></tr>
+<tr><td>融资余额变动不把「上一有值日」当「上一交易日」（REQ-003）</td><td>融资数据截至 9-23，程序判定与 9-22 相邻后才给变动值；AI 也写明「变化仅对应 9 月 22 日至 23 日」</td></tr>
+<tr><td>整体不适合交易时，前三不得凑数成可交易推荐（REQ-002 RQ03）</td><td>AI 给出 <b>0 个「可关注」</b>，全部为观察/等待，并写明「相对排序不代表入场机会」</td></tr>
+<tr><td>每次结果记录实际提供方与是否降级，不把后备结果标成 Codex（REQ-002 RQ01）</td><td><code>trace.provider=codex</code>、<code>fallback_used=false</code>、<code>attempts=[]</code></td></tr>
+<tr><td>没有真实品种映射时不代选 ETF、不表示交易授权（REQ-001/002）</td><td>AI 自述「全部 execution_asset 为空，不自行选择 ETF，也不表示交易授权」</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2>五、缺陷与用例修正</h2>
+<div class="card">
+  <h3 style="margin-top:0">实现缺陷：0 条</h3>
+  <p style="margin-bottom:0">272 项自动化断言、3 轮真实链路均未暴露需要交回 Codex 修复的问题，因此本轮<strong>没有缺陷单、也不需要重新走实现签字</strong>。</p>
+</div>
+
+<h3>执行中修正的用例问题（是用例写错，不是实现有问题）</h3>
+<div class="tablewrap">
+<table>
+<thead><tr><th>用例</th><th>原判据</th><th>实际情况</th><th>处理</th></tr></thead>
+<tbody>
+<tr><td>J-15 定时开关</td><td>以为服务端会强制把 <code>auto_refresh</code> 写回 false</td><td>写请求会保留你的选择——这正是「你自己打开定时」的通道；强制关闭只发生在<strong>服务启动时</strong>和<strong>资料迁移时</strong></td><td>拆成三条：启动强制关闭 / 可由页面打开 / 关闭后无下次触发</td></tr>
+<tr><td>J-20 周线均线</td><td>断言均线点数等于周 K 数</td><td>起始周不足 5 天时首周无值，实际少 1 个点</td><td>改为「≥ 周K数 − 1」，并加源码断言确认取的是日均线在周 K 结束日的值，不是 5 周均线</td></tr>
+<tr><td>J-21 量柱对齐</td><td>算成 <code>(n−1)×2</code> 个矩形</td><td>每根 K 线实体都在，只有量柱少一根</td><td>修正为 <code>n×2−1</code></td></tr>
+<tr><td>E-07 同日期去重</td><td>夹具把重复记录的价格抬到高于当日最高价，被程序按无效 K 线丢弃</td><td>程序先去重（后出现的覆盖先出现的）再校验合法性</td><td>夹具改为同时抬高最高价，并拆成「后者覆盖」与「按日期升序」两条</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2>六、还没测到的</h2>
+<div class="tablewrap">
+<table>
+<thead><tr><th>项</th><th>为什么没测</th></tr></thead>
+<tbody>
+<tr><td>Windows 实机运行</td><td>没有 Windows 设备。兼容入口 <code>.cmd</code> 已交付但未实机验证</td></tr>
+<tr><td>完整 1 小时定时触发</td><td>需要真实等待 1 小时，且重启服务会重置计时。本轮只验证了开关语义与排程状态</td></tr>
+<tr><td>真实 DeepSeek 调用</td><td>没有 API Key。已验证「未配置时的正确报错」和「降级链路是否按配置触发」</td></tr>
+<tr><td>浏览器交互动画、布局细节</td><td>属观感而非正确性；已用前端源码契约断言（默认 MA20、本地保存、白名单校验、每卡独立周期）替代</td></tr>
+<tr><td>跨机器迁移实测</td><td>需要第二台设备。已验证同机导出/导入、冲突拒绝、回收站状态随包保留</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2>七、观察与改进建议（不是缺陷）</h2>
+<div class="tablewrap">
+<table>
+<thead><tr><th>#</th><th>观察</th><th>建议</th></tr></thead>
+<tbody>
+<tr><td>O1</td><td><code>limitations</code> 里有条目只写「见缺口及来源记录」，具体原因（例如「行业资金表本轮 0/90」）留在快照的 <code>gaps</code> 里，而 <code>gaps</code> 没有进入 AI 输入。AI 仍自行识别了主要缺口，但描述会偏笼统。</td><td>可考虑把 <code>gaps</code> 的代号与消息摘要并入 <code>limitations</code>，让 AI 的缺口描述更具体。属可选优化。</td></tr>
+<tr><td>O2</td><td>AI 不可用时，「候选重点」会退回程序量价参考排序，标签已明确写「缺AI综合判断」。</td><td>不用改，现状已如实标注。</td></tr>
+<tr><td>O3</td><td>本轮真实取数只跑了一次，样本量小；免费源的口径变化与限流未做长周期观察。</td><td>建议在 Windows 机上做一次连续多轮（含跨休市日）的观察，作为上线前最后一次确认。</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2>八、建议结论与下一步</h2>
+<div class="card">
+  <p style="margin-top:0"><strong>建议：本轮测试通过，可以进入独立验收。</strong>依据是 272 项自动化断言（含 Python 3.8 兼容复跑）与 3 轮真实链路全部通过，且未发现实现缺陷；所有已知缺口都如实标注、没有被伪造为成功结果。</p>
+  <p><strong>需要你做两件事：</strong></p>
+  <ul class="tight">
+    <li>对被测实现 <code>a336be3</code> 与 I5 交付签字（这一栏目前仍空着）。</li>
+    <li>对<strong>本测试轮次</strong>（实现基线 <code>a336be3</code>、用例修订 T1、上述环境与结果）签字。</li>
+  </ul>
+  <p style="margin-bottom:0"><strong>签完之后我做什么：</strong>出具独立验收结论（含证据映射），并按你的许可把测试与验收结果回填到 TASK-001～009 对应区域。若你希望先补 Windows 实机或整点周期观察，这两项我可以单独排成下一轮。</p>
+</div>
+
+<div class="footer">
+  本报告由小步依据实际执行结果整理。原始证据：<code>tests/_evidence/test-run-T1.txt</code>（Python 3.13）、<code>tests/_evidence/test-run-T1-py38.txt</code>（Python 3.8）、<code>tests/_evidence/l3-real-data-T1.txt</code>（真实链路）。执行过程记录：<code>records/workbuddy-测试执行-T1.md</code>。用例：<code>05-测试用例/P03-测试用例-T1.md</code>。测试代码：<code>tests/</code>。<br>
+  本轮<strong>未修改</strong> <code>src/</code>、需求、分析、任务卡、技术设计，也未改动 Codex 的任何记录与交付文件。
+</div>
+
+</main>
+</body>
+</html>

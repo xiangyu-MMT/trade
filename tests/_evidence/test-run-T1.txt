@@ -1,0 +1,293 @@
+test_disabled_keeps_program_facts (test_ai_router.H01Disabled.test_disabled_keeps_program_facts) ... ok
+test_codex_failure_falls_back (test_ai_router.H02FallbackToDeepSeek.test_codex_failure_falls_back) ... ok
+test_no_fallback_when_disabled (test_ai_router.H02FallbackToDeepSeek.test_no_fallback_when_disabled) ... ok
+test_codex_not_called (test_ai_router.H03DeepSeekOnly.test_codex_not_called) ... ok
+test_deepseek_not_called (test_ai_router.H04NoFallbackOnSuccess.test_deepseek_not_called) ... ok
+test_cancel_after_first_failure (test_ai_router.H05CancelStopsFallback.test_cancel_after_first_failure) ... ok
+test_reports_attempts (test_ai_router.H06BothFail.test_reports_attempts) ... ok
+test_missing_key (test_ai_router.H07DeepSeekUnconfigured.test_missing_key) ... ok
+test_deepseek_trace_not_labelled_codex (test_ai_router.H08ProviderIsRecorded.test_deepseek_trace_not_labelled_codex) ... ok
+test_three_purposes_present (test_ai_router.H17PromptsAndSchemas.test_three_purposes_present) ... ok
+test_trace_file_updated (test_ai_router.H18TraceWrittenBack.test_trace_file_updated) ... ok
+test_environment_key_is_used_when_no_file (test_ai_router.H19Credentials.test_environment_key_is_used_when_no_file) ... ok
+test_file_permission_is_owner_only (test_ai_router.H19Credentials.test_file_permission_is_owner_only) ... ok
+test_key_not_in_config_or_archive (test_ai_router.H19Credentials.test_key_not_in_config_or_archive) ... ok
+test_rejects_multiline_and_oversized (test_ai_router.H19Credentials.test_rejects_multiline_and_oversized) ... ok
+test_save_and_read (test_ai_router.H19Credentials.test_save_and_read) ... ok
+test_default_draws_only_ma20 (test_charts.J17DefaultSingleMa.test_default_draws_only_ma20) ... ok
+test_explicit_single (test_charts.J17DefaultSingleMa.test_explicit_single) ... ok
+test_four_lines (test_charts.J18AllFourSelectable.test_four_lines) ... ok
+test_none_selected_draws_no_line (test_charts.J18AllFourSelectable.test_none_selected_draws_no_line) ... ok
+test_unknown_period_is_skipped (test_charts.J19UnknownPeriodIgnored.test_unknown_period_is_skipped) ... ok
+test_implementation_samples_daily_not_weekly (test_charts.J20WeeklyUsesDailyAverage.test_implementation_samples_daily_not_weekly) ... ok
+test_weekly_axis_labels_use_weekly_dates (test_charts.J20WeeklyUsesDailyAverage.test_weekly_axis_labels_use_weekly_dates) ... ok
+test_weekly_sample_matches_daily_average (test_charts.J20WeeklyUsesDailyAverage.test_weekly_sample_matches_daily_average) ... ok
+test_every_bar_gets_a_volume_rect (test_charts.J21VolumeAlignedWithBars.test_every_bar_gets_a_volume_rect) ... ok
+test_missing_volume_skips_bar (test_charts.J21VolumeAlignedWithBars.test_missing_volume_skips_bar) ... ok
+test_short_history_message (test_charts.J22InsufficientData.test_short_history_message) ... ok
+test_all_five_charts_returned (test_charts.J23Dashboard.test_all_five_charts_returned) ... ok
+test_empty_series_message (test_charts.J23Dashboard.test_empty_series_message) ... ok
+test_turnover_has_no_data_message (test_charts.J23Dashboard.test_turnover_has_no_data_message) ... ok
+test_gap_breaks_line_instead_of_zero (test_charts.J24BasisCurveZeroAxis.test_gap_breaks_line_instead_of_zero) ... ok
+test_no_rows_message (test_charts.J24BasisCurveZeroAxis.test_no_rows_message) ... ok
+test_turnover_empty_message (test_charts.J24BasisCurveZeroAxis.test_turnover_empty_message) ... ok
+test_zero_axis_and_signed_values (test_charts.J24BasisCurveZeroAxis.test_zero_axis_and_signed_values) ... ok
+test_default_config_loads (test_config.A01Default.test_default_config_loads) ... ok
+test_rejects_other_schema (test_config.A02SchemaVersion.test_rejects_other_schema) ... ok
+test_rejects_api_key (test_config.A03SecretsTopLevel.test_rejects_api_key) ... ok
+test_rejects_nested_secrets (test_config.A03SecretsTopLevel.test_rejects_nested_secrets) ... ok
+test_accepts_full_set_but_normalises (test_config.A05MaPeriods.test_accepts_full_set_but_normalises) ... ok
+test_rejects_illegal_values (test_config.A05MaPeriods.test_rejects_illegal_values) ... ok
+test_rejects_other_sets (test_config.A05MaPeriods.test_rejects_other_sets) ... ok
+test_saved_value_is_calculation_value (test_config.A08DisplayDoesNotLeakIntoCalculation.test_saved_value_is_calculation_value) ... ok
+test_duplicate_ids_rejected (test_config.A09Symbols.test_duplicate_ids_rejected) ... ok
+test_mapping_target_accepts_etf (test_config.A09Symbols.test_mapping_target_accepts_etf) ... ok
+test_mapping_target_must_be_tradable (test_config.A09Symbols.test_mapping_target_must_be_tradable) ... ok
+test_stocks_reject_index_codes (test_config.A09Symbols.test_stocks_reject_index_codes) ... ok
+test_auto_refresh_must_be_bool (test_config.A12NumericBoundaries.test_auto_refresh_must_be_bool) ... ok
+test_history_bars (test_config.A12NumericBoundaries.test_history_bars) ... ok
+test_network_limits (test_config.A12NumericBoundaries.test_network_limits) ... ok
+test_refresh_seconds (test_config.A12NumericBoundaries.test_refresh_seconds) ... ok
+test_top_n (test_config.A12NumericBoundaries.test_top_n) ... ok
+test_ai_defaults_are_filled (test_config.A15AiProvider.test_ai_defaults_are_filled) ... ok
+test_provider_accepts_both (test_config.A15AiProvider.test_provider_accepts_both) ... ok
+test_provider_limited (test_config.A15AiProvider.test_provider_limited) ... ok
+test_timeout_bounds (test_config.A15AiProvider.test_timeout_bounds) ... ok
+test_rejects_credentials_and_params (test_config.A17DeepSeekUrl.test_rejects_credentials_and_params) ... ok
+test_requires_https (test_config.A17DeepSeekUrl.test_requires_https) ... ok
+test_timeout_bounds (test_config.A17DeepSeekUrl.test_timeout_bounds) ... ok
+test_fixed_industries_reject_blank (test_config.A20OtherRules.test_fixed_industries_reject_blank) ... ok
+test_indicator_consistency (test_config.A20OtherRules.test_indicator_consistency) ... ok
+test_industry_provider_fixed (test_config.A20OtherRules.test_industry_provider_fixed) ... ok
+test_max_import_bytes_bounds (test_config.A20OtherRules.test_max_import_bytes_bounds) ... ok
+test_unknown_keys_are_not_silently_dropped (test_config.A20OtherRules.test_unknown_keys_are_not_silently_dropped) ... ok
+test_evidence_is_not_duplicated_for_candidates (test_engine_validate.H09IndustryScope.test_evidence_is_not_duplicated_for_candidates) ... ok
+test_no_full_industry_list_in_payload (test_engine_validate.H09IndustryScope.test_no_full_industry_list_in_payload) ... ok
+test_only_selected_industries_are_sent (test_engine_validate.H09IndustryScope.test_only_selected_industries_are_sent) ... ok
+test_scope_policy_mentions_ranking_is_program_side (test_engine_validate.H09IndustryScope.test_scope_policy_mentions_ranking_is_program_side) ... ok
+test_knowledge_without_logic_layer_is_not_allowed (test_engine_validate.H11ReferenceChecks.test_knowledge_without_logic_layer_is_not_allowed) ... ok
+test_unknown_evidence_reference (test_engine_validate.H11ReferenceChecks.test_unknown_evidence_reference) ... ok
+test_unknown_logic_reference (test_engine_validate.H11ReferenceChecks.test_unknown_logic_reference) ... ok
+test_unknown_mode_reference (test_engine_validate.H11ReferenceChecks.test_unknown_mode_reference) ... ok
+test_unknown_proposal_reference (test_engine_validate.H11ReferenceChecks.test_unknown_proposal_reference) ... ok
+test_duplicate_candidate (test_engine_validate.H12ScopeChecks.test_duplicate_candidate) ... ok
+test_out_of_scope_candidate (test_engine_validate.H12ScopeChecks.test_out_of_scope_candidate) ... ok
+test_candidate_without_evidence (test_engine_validate.H13BasisChecks.test_candidate_without_evidence) ... ok
+test_candidate_without_logic (test_engine_validate.H13BasisChecks.test_candidate_without_logic) ... ok
+test_excluded_candidate_cannot_be_promoted (test_engine_validate.H13BasisChecks.test_excluded_candidate_cannot_be_promoted) ... ok
+test_missing_technical_cannot_be_promoted (test_engine_validate.H13BasisChecks.test_missing_technical_cannot_be_promoted) ... ok
+test_observe_stance_needs_no_basis (test_engine_validate.H13BasisChecks.test_observe_stance_needs_no_basis) ... ok
+test_duplicate_member (test_engine_validate.H15RankingChecks.test_duplicate_member) ... ok
+test_empty_ranking_is_rejected (test_engine_validate.H15RankingChecks.test_empty_ranking_is_rejected) ... ok
+test_extra_member (test_engine_validate.H15RankingChecks.test_extra_member) ... ok
+test_missing_member (test_engine_validate.H15RankingChecks.test_missing_member) ... ok
+test_full_coverage_has_no_missing (test_engine_validate.H17CoverageAndLimitations.test_full_coverage_has_no_missing) ... ok
+test_uncovered_candidate_recorded (test_engine_validate.H17CoverageAndLimitations.test_uncovered_candidate_recorded) ... ok
+test_complete_without_unknown (test_facts.F08Breadth.test_complete_without_unknown) ... ok
+test_directory_incomplete_propagates (test_facts.F08Breadth.test_directory_incomplete_propagates) ... ok
+test_incomplete_when_unknown_price (test_facts.F08Breadth.test_incomplete_when_unknown_price) ... ok
+test_scope_and_counts (test_facts.F08Breadth.test_scope_and_counts) ... ok
+test_amount_scope_is_shsz_a_including_st (test_facts.F09AmountScope.test_amount_scope_is_shsz_a_including_st) ... ok
+test_missing_amount_marks_incomplete (test_facts.F09AmountScope.test_missing_amount_marks_incomplete) ... ok
+test_adjacent_session_gives_change (test_facts.F11Margin.test_adjacent_session_gives_change) ... ok
+test_gap_does_not_claim_previous_session (test_facts.F11Margin.test_gap_does_not_claim_previous_session) ... ok
+test_definition_present (test_facts.F12SealRate.test_definition_present) ... ok
+test_incomplete_pool_leaves_none (test_facts.F12SealRate.test_incomplete_pool_leaves_none) ... ok
+test_mismatched_day_leaves_none (test_facts.F12SealRate.test_mismatched_day_leaves_none) ... ok
+test_same_day_complete_pools (test_facts.F12SealRate.test_same_day_complete_pools) ... ok
+test_non_ok_coverage_becomes_limitation (test_facts.F13Limitations.test_non_ok_coverage_becomes_limitation) ... ok
+test_ok_coverage_is_not_a_limitation (test_facts.F13Limitations.test_ok_coverage_is_not_a_limitation) ... ok
+test_evidence_entry (test_facts.F14MarketVolume.test_evidence_entry) ... ok
+test_independent_of_candidates (test_facts.F14MarketVolume.test_independent_of_candidates) ... ok
+test_absent_basis_is_absent (test_facts.F15Basis.test_absent_basis_is_absent) ... ok
+test_if_and_im_entered_evidence (test_facts.F15Basis.test_if_and_im_entered_evidence) ... ok
+test_missing_dates_are_not_zero_filled (test_facts.F16LimitHistory.test_missing_dates_are_not_zero_filled) ... ok
+test_values (test_indicators.E01Sma.test_values) ... ok
+test_window_not_ready (test_indicators.E01Sma.test_window_not_ready) ... ok
+test_constant_series (test_indicators.E02Ema.test_constant_series) ... ok
+test_none_resets (test_indicators.E02Ema.test_none_resets) ... ok
+test_adds_and_subtracts (test_indicators.E03Obv.test_adds_and_subtracts) ... ok
+test_gap_turns_none (test_indicators.E03Obv.test_gap_turns_none) ... ok
+test_formula (test_indicators.E05Cci.test_formula) ... ok
+test_zero_deviation_returns_none (test_indicators.E05Cci.test_zero_deviation_returns_none) ... ok
+test_invalid_rows_dropped_and_counted (test_indicators.E06RejectsBadBars.test_invalid_rows_dropped_and_counted) ... ok
+test_later_row_wins_for_same_date (test_indicators.E07DedupAndSort.test_later_row_wins_for_same_date)
+去重规则：输入中后出现的同日期记录覆盖先出现的。 ... ok
+test_output_sorted_by_date (test_indicators.E07DedupAndSort.test_output_sorted_by_date) ... ok
+test_only_five_and_twenty (test_indicators.E08MaPeriods.test_only_five_and_twenty) ... ok
+test_partial_with_reasons (test_indicators.E09ShortHistory.test_partial_with_reasons) ... ok
+test_missing (test_indicators.E10EmptyHistory.test_missing) ... ok
+test_aggregation_matches_source (test_indicators.E11Weekly.test_aggregation_matches_source) ... ok
+test_version_and_definition (test_indicators.E12Traceability.test_version_and_definition) ... ok
+test_action_without_execution_asset (test_plans.I01ActionNeedsTradable.test_action_without_execution_asset) ... ok
+test_etf_is_accepted (test_plans.I01ActionNeedsTradable.test_etf_is_accepted) ... ok
+test_index_is_not_tradable (test_plans.I01ActionNeedsTradable.test_index_is_not_tradable) ... ok
+test_bad_format (test_plans.I03ValidityFormat.test_bad_format) ... ok
+test_good_format (test_plans.I03ValidityFormat.test_good_format) ... ok
+test_confirmed_reference_accepted (test_plans.I04KnowledgeReferences.test_confirmed_reference_accepted) ... ok
+test_draft_reference_rejected (test_plans.I04KnowledgeReferences.test_draft_reference_rejected) ... ok
+test_unknown_run_rejected (test_plans.I04KnowledgeReferences.test_unknown_run_rejected) ... ok
+test_observation_can_be_confirmed_with_gaps (test_plans.I05ObservationPlan.test_observation_can_be_confirmed_with_gaps) ... ok
+test_saved_as_observation (test_plans.I05ObservationPlan.test_saved_as_observation) ... ok
+test_complete_action_is_confirmed (test_plans.I06IncompleteActionCannotBeConfirmed.test_complete_action_is_confirmed) ... ok
+test_empty_basis_blocks_confirmation (test_plans.I06IncompleteActionCannotBeConfirmed.test_empty_basis_blocks_confirmation) ... ok
+test_missing_list_blocks_confirmation (test_plans.I06IncompleteActionCannotBeConfirmed.test_missing_list_blocks_confirmation) ... ok
+test_pending_fields_block_confirmation (test_plans.I06IncompleteActionCannotBeConfirmed.test_pending_fields_block_confirmation) ... ok
+test_buy_requires_tradable_code (test_plans.I08BackfillValidation.test_buy_requires_tradable_code) ... ok
+test_negative_number_rejected (test_plans.I08BackfillValidation.test_negative_number_rejected) ... ok
+test_note_does_not_require_code (test_plans.I08BackfillValidation.test_note_does_not_require_code) ... ok
+test_unknown_action (test_plans.I08BackfillValidation.test_unknown_action) ... ok
+test_amount_from_price_and_quantity (test_plans.I10AmountComputed.test_amount_from_price_and_quantity) ... ok
+test_explicit_amount_kept (test_plans.I10AmountComputed.test_explicit_amount_kept) ... ok
+test_bad_time_rejected (test_plans.I11TimeHandling.test_bad_time_rejected) ... ok
+test_missing_time_rejected (test_plans.I11TimeHandling.test_missing_time_rejected) ... ok
+test_naive_time_treated_as_cn (test_plans.I11TimeHandling.test_naive_time_treated_as_cn) ... ok
+test_beyond_validity_window (test_plans.I12Deviations.test_beyond_validity_window) ... ok
+test_clean_backfill_still_requires_review_note (test_plans.I12Deviations.test_clean_backfill_still_requires_review_note) ... ok
+test_different_instrument (test_plans.I12Deviations.test_different_instrument) ... ok
+test_no_plan_reference (test_plans.I12Deviations.test_no_plan_reference) ... ok
+test_note_does_not_create_instrument_deviation (test_plans.I12Deviations.test_note_does_not_create_instrument_deviation) ... ok
+test_plan_without_instrument (test_plans.I12Deviations.test_plan_without_instrument) ... ok
+test_unconfirmed_plan_flagged (test_plans.I12Deviations.test_unconfirmed_plan_flagged) ... ok
+test_no_execution_record (test_plans.I13ReviewNeedsBackfill.test_no_execution_record) ... ok
+test_unknown_evidence_rejected (test_plans.I14ReviewReferenceCheck.test_unknown_evidence_rejected) ... ok
+test_valid_evidence_accepted (test_plans.I14ReviewReferenceCheck.test_valid_evidence_accepted) ... ok
+test_bad_proposal_index (test_plans.I15ReviewTraceability.test_bad_proposal_index) ... ok
+test_proposal_becomes_draft_only (test_plans.I15ReviewTraceability.test_proposal_becomes_draft_only) ... ok
+test_review_keeps_versions_and_refs (test_plans.I15ReviewTraceability.test_review_keeps_versions_and_refs) ... ok
+test_revise_allowed_fields (test_plans.I16PlanRevision.test_revise_allowed_fields) ... ok
+test_revise_rejects_protected_fields (test_plans.I16PlanRevision.test_revise_rejects_protected_fields) ... ok
+test_revise_validates_result (test_plans.I16PlanRevision.test_revise_validates_result) ... ok
+test_all_clean_candidates_are_eligible (test_presentation.G01EligibleIds.test_all_clean_candidates_are_eligible) ... ok
+test_filters (test_presentation.G01EligibleIds.test_filters) ... ok
+test_sorting_is_repeatable (test_presentation.G02StableOrder.test_sorting_is_repeatable) ... ok
+test_tie_break_by_asset_id (test_presentation.G02StableOrder.test_tie_break_by_asset_id) ... ok
+test_no_ai_source_is_flagged (test_presentation.G03ProgramFallbackLabelled.test_no_ai_source_is_flagged) ... ok
+test_duplicated_ranking_falls_back (test_presentation.G04PartialAiRankingRejected.test_duplicated_ranking_falls_back) ... ok
+test_incomplete_ranking_falls_back (test_presentation.G04PartialAiRankingRejected.test_incomplete_ranking_falls_back) ... ok
+test_full_ranking_is_adopted (test_presentation.G05AiRankingUsed.test_full_ranking_is_adopted) ... ok
+test_fixed_industry_wins_first_match (test_presentation.G06GroupsDoNotOverlap.test_fixed_industry_wins_first_match) ... ok
+test_index_count_matches_config (test_presentation.G06GroupsDoNotOverlap.test_index_count_matches_config) ... ok
+test_no_duplicate_across_groups (test_presentation.G06GroupsDoNotOverlap.test_no_duplicate_across_groups) ... ok
+test_group_uses_top3_in_order (test_presentation.G07IndustryTop3.test_group_uses_top3_in_order) ... ok
+test_top3_from_dynamic_ten (test_presentation.G07IndustryTop3.test_top3_from_dynamic_ten) ... ok
+test_dynamic_analyzed_is_ten (test_presentation.G08DynamicStillAllAnalysed.test_dynamic_analyzed_is_ten) ... ok
+test_eligible_count_reported (test_presentation.G08DynamicStillAllAnalysed.test_eligible_count_reported) ... ok
+test_rank_missing_lists_ineligible (test_presentation.G09OverallTop3.test_rank_missing_lists_ineligible) ... ok
+test_top3_within_ordering (test_presentation.G09OverallTop3.test_top3_within_ordering) ... ok
+test_no_second_ranking_implementation (test_presentation.G10SharedContract.test_no_second_ranking_implementation) ... ok
+test_page_and_report_share_one_selector (test_presentation.G10SharedContract.test_page_and_report_share_one_selector) ... ok
+test_static_assets (test_server_api.J01Page.test_static_assets) ... ok
+test_token_is_injected (test_server_api.J01Page.test_token_is_injected) ... ok
+test_page_and_assets_are_local (test_server_api.J02NoExternalDependencies.test_page_and_assets_are_local) ... ok
+test_state_shape_and_no_secret (test_server_api.J03State.test_state_shape_and_no_secret) ... ok
+test_version_reported (test_server_api.J03State.test_version_reported) ... ok
+test_no_key_echo (test_server_api.J04AiConfigEndpoint.test_no_key_echo) ... ok
+test_save_config_with_key_writes_credentials_only (test_server_api.J04AiConfigEndpoint.test_save_config_with_key_writes_credentials_only) ... ok
+test_save_config_without_key (test_server_api.J04AiConfigEndpoint.test_save_config_without_key) ... ok
+test_bad_origin (test_server_api.J05WriteAuthorization.test_bad_origin) ... HTTP "POST /api/config HTTP/1.1" 403 -
+ok
+test_foreign_host (test_server_api.J05WriteAuthorization.test_foreign_host) ... HTTP "POST /api/config HTTP/1.1" 403 -
+ok
+test_missing_token (test_server_api.J05WriteAuthorization.test_missing_token) ... HTTP "POST /api/config HTTP/1.1" 403 -
+ok
+test_read_does_not_need_token (test_server_api.J05WriteAuthorization.test_read_does_not_need_token) ... ok
+test_wrong_token (test_server_api.J05WriteAuthorization.test_wrong_token) ... HTTP "POST /api/config HTTP/1.1" 403 -
+ok
+test_empty_body (test_server_api.J08RequestValidation.test_empty_body) ... HTTP "POST /api/config HTTP/1.1" 413 -
+ok
+test_error_envelope_has_no_traceback (test_server_api.J08RequestValidation.test_error_envelope_has_no_traceback) ... HTTP "POST /api/config HTTP/1.1" 400 -
+ok
+test_invalid_json (test_server_api.J08RequestValidation.test_invalid_json) ... HTTP "POST /api/config HTTP/1.1" 400 -
+ok
+test_non_object_body (test_server_api.J08RequestValidation.test_non_object_body) ... HTTP "POST /api/config HTTP/1.1" 400 -
+ok
+test_unknown_route (test_server_api.J08RequestValidation.test_unknown_route) ... HTTP "GET /api/nope HTTP/1.1" 404 -
+ok
+test_wrong_content_type (test_server_api.J08RequestValidation.test_wrong_content_type) ... HTTP "POST /api/config HTTP/1.1" 415 -
+ok
+test_all_read_routes (test_server_api.J10ReadEndpoints.test_all_read_routes) ... ok
+test_knowledge_cannot_be_trashed (test_server_api.J11TrashEndpoints.test_knowledge_cannot_be_trashed) ... HTTP "POST /api/objects/25100c0053924769a0147f4afee51603/trash HTTP/1.1" 400 -
+ok
+test_revision_conflict (test_server_api.J11TrashEndpoints.test_revision_conflict) ... HTTP "POST /api/objects/680ffa4881a645c69ad076e6904a73cb/trash HTTP/1.1" 409 -
+ok
+test_trash_and_restore (test_server_api.J11TrashEndpoints.test_trash_and_restore) ... ok
+test_missing_run (test_server_api.J12Report.test_missing_run) ... HTTP "GET /api/runs/doesnotexist HTTP/1.1" 404 -
+ok
+test_report_is_self_contained (test_server_api.J12Report.test_report_is_self_contained) ... ok
+test_report_shows_gaps (test_server_api.J12Report.test_report_shows_gaps) ... ok
+test_run_view_contains_presentation_and_charts (test_server_api.J12Report.test_run_view_contains_presentation_and_charts) ... ok
+test_closed_schedule_has_no_next_run (test_server_api.J14ScheduleControl.test_closed_schedule_has_no_next_run) ... ok
+test_startup_forces_schedule_off (test_server_api.J14ScheduleControl.test_startup_forces_schedule_off) ... ok
+test_user_can_open_schedule_from_the_page (test_server_api.J14ScheduleControl.test_user_can_open_schedule_from_the_page) ... ok
+test_archive_is_versioned_and_secret_free (test_server_api.J16Export.test_archive_is_versioned_and_secret_free) ... ok
+test_choice_persisted_in_browser_storage (test_server_api.J25FrontendContract.test_choice_persisted_in_browser_storage) ... ok
+test_default_is_only_ma20 (test_server_api.J25FrontendContract.test_default_is_only_ma20) ... ok
+test_ma_choices_are_rendered_per_card (test_server_api.J25FrontendContract.test_ma_choices_are_rendered_per_card) ... ok
+test_no_page_level_period_switch (test_server_api.J25FrontendContract.test_no_page_level_period_switch) ... ok
+test_only_supported_periods_are_accepted (test_server_api.J25FrontendContract.test_only_supported_periods_are_accepted) ... ok
+test_period_switch_is_per_card (test_server_api.J25FrontendContract.test_period_switch_is_per_card) ... ok
+test_lock_is_reusable_after_release (test_server_api.K01InstanceLock.test_lock_is_reusable_after_release) ... ok
+test_second_lock_is_rejected (test_server_api.K01InstanceLock.test_second_lock_is_rejected) ... ok
+test_cancel_endpoint_is_acknowledged (test_server_api.K02JobMutex.test_cancel_endpoint_is_acknowledged) ... ok
+test_second_job_is_rejected (test_server_api.K02JobMutex.test_second_job_is_rejected) ... HTTP "POST /api/run HTTP/1.1" 409 -
+ok
+test_running_rows_are_marked_interrupted (test_server_api.K05Interrupted.test_running_rows_are_marked_interrupted) ... ok
+test_evidence_keeps_snapshot_date (test_server_api.K07RunWithoutAi.test_evidence_keeps_snapshot_date) ... ok
+test_failed_snapshot_marks_run_failed (test_server_api.K07RunWithoutAi.test_failed_snapshot_marks_run_failed) ... ok
+test_partial_with_skip_reason (test_server_api.K07RunWithoutAi.test_partial_with_skip_reason) ... ok
+test_compute_on_fixture_snapshot (test_server_api.K11CommandLine.test_compute_on_fixture_snapshot) ... ok
+test_missing_input_file_fails_loudly (test_server_api.K11CommandLine.test_missing_input_file_fails_loudly)
+输入文件不存在时必须非零退出，不能静默成功。 ... ok
+test_port_validation (test_server_api.K11CommandLine.test_port_validation) ... ok
+test_report_requires_existing_run (test_server_api.K11CommandLine.test_report_requires_existing_run) ... ok
+test_status (test_server_api.K11CommandLine.test_status) ... ok
+test_b01_create (test_store.BGroup.test_b01_create) ... ok
+test_b02_confirm_needs_actor (test_store.BGroup.test_b02_confirm_needs_actor) ... ok
+test_b03_confirm_records_identity (test_store.BGroup.test_b03_confirm_records_identity) ... ok
+test_b04_confirm_is_idempotent (test_store.BGroup.test_b04_confirm_is_idempotent) ... ok
+test_b05_revise_creates_new_version (test_store.BGroup.test_b05_revise_creates_new_version) ... ok
+test_b06_stale_expected_revision_rejected (test_store.BGroup.test_b06_stale_expected_revision_rejected) ... ok
+test_b07_cannot_confirm_expired_draft (test_store.BGroup.test_b07_cannot_confirm_expired_draft) ... ok
+test_b08_immutable_kinds (test_store.BGroup.test_b08_immutable_kinds) ... ok
+test_b09_kind_and_identifier (test_store.BGroup.test_b09_kind_and_identifier) ... ok
+test_b10_duplicate_id (test_store.BGroup.test_b10_duplicate_id) ... ok
+test_b11_list_returns_latest_only (test_store.BGroup.test_b11_list_returns_latest_only) ... ok
+test_b12_draft_does_not_hide_confirmed (test_store.BGroup.test_b12_draft_does_not_hide_confirmed) ... ok
+test_b13_versions_descending (test_store.BGroup.test_b13_versions_descending) ... ok
+test_b14_reference_format (test_store.BGroup.test_b14_reference_format) ... ok
+test_c01_plan_can_be_trashed (test_store.CGroup.test_c01_plan_can_be_trashed) ... ok
+test_c02_execution_can_be_trashed (test_store.CGroup.test_c02_execution_can_be_trashed) ... ok
+test_c03_only_plan_and_execution (test_store.CGroup.test_c03_only_plan_and_execution) ... ok
+test_c04_restore_keeps_everything (test_store.CGroup.test_c04_restore_keeps_everything) ... ok
+test_c05_revision_mismatch (test_store.CGroup.test_c05_revision_mismatch) ... ok
+test_c06_no_revise_after_delete (test_store.CGroup.test_c06_no_revise_after_delete) ... ok
+test_c07_no_confirm_after_delete (test_store.CGroup.test_c07_no_confirm_after_delete) ... ok
+test_c11_no_permanent_purge (test_store.CGroup.test_c11_no_permanent_purge) ... ok
+test_c12_lifecycle_survives_archive (test_store.CGroup.test_c12_lifecycle_survives_archive) ... ok
+test_c13_actor_required (test_store.CGroup.test_c13_actor_required) ... ok
+test_c08_cannot_backfill_on_deleted_plan (test_store.DeletedPlanBlocksDownstream.test_c08_cannot_backfill_on_deleted_plan) ... ok
+test_c09_cannot_review_deleted_plan (test_store.DeletedPlanBlocksDownstream.test_c09_cannot_review_deleted_plan) ... ok
+test_c10_history_review_unchanged (test_store.DeletedPlanBlocksDownstream.test_c10_history_review_unchanged) ... ok
+test_plain_weekday (test_volume_price.F01PreviousDay.test_plain_weekday) ... ok
+test_skips_closed_dates (test_volume_price.F01PreviousDay.test_skips_closed_dates) ... ok
+test_after_close_is_complete (test_volume_price.F02CompletedAsOf.test_after_close_is_complete) ... ok
+test_date_only_in_the_past_is_complete (test_volume_price.F02CompletedAsOf.test_date_only_in_the_past_is_complete) ... ok
+test_intraday_is_not_complete (test_volume_price.F02CompletedAsOf.test_intraday_is_not_complete) ... ok
+test_unparsable_is_not_complete (test_volume_price.F02CompletedAsOf.test_unparsable_is_not_complete) ... ok
+test_no_previous_day_comparison_when_gap (test_volume_price.F03NonContiguous.test_no_previous_day_comparison_when_gap) ... ok
+test_forming_bar_is_excluded (test_volume_price.F04FormingBar.test_forming_bar_is_excluded) ... ok
+test_eligible_needs_full_comparison (test_volume_price.F05Eligible.test_eligible_needs_full_comparison) ... ok
+test_zero_volume_is_not_eligible (test_volume_price.F05Eligible.test_zero_volume_is_not_eligible) ... ok
+test_alternating_series (test_volume_price.F06UpDownVolumeRatio.test_alternating_series) ... ok
+test_no_down_days_returns_none (test_volume_price.F06UpDownVolumeRatio.test_no_down_days_returns_none) ... ok
+test_ratio_helper (test_volume_price.F06UpDownVolumeRatio.test_ratio_helper) ... ok
+test_contiguous_rows_are_compared (test_volume_price.F07TurnoverSummary.test_contiguous_rows_are_compared) ... ok
+test_empty_rows (test_volume_price.F07TurnoverSummary.test_empty_rows) ... ok
+test_gap_prevents_previous_day_claim (test_volume_price.F07TurnoverSummary.test_gap_prevents_previous_day_claim) ... ok
+test_sorted_by_date (test_volume_price.F07TurnoverSummary.test_sorted_by_date) ... ok
+
+----------------------------------------------------------------------
+Ran 272 tests in 8.814s
+
+OK

@@ -1,0 +1,293 @@
+test_disabled_keeps_program_facts (test_ai_router.H01Disabled) ... ok
+test_codex_failure_falls_back (test_ai_router.H02FallbackToDeepSeek) ... ok
+test_no_fallback_when_disabled (test_ai_router.H02FallbackToDeepSeek) ... ok
+test_codex_not_called (test_ai_router.H03DeepSeekOnly) ... ok
+test_deepseek_not_called (test_ai_router.H04NoFallbackOnSuccess) ... ok
+test_cancel_after_first_failure (test_ai_router.H05CancelStopsFallback) ... ok
+test_reports_attempts (test_ai_router.H06BothFail) ... ok
+test_missing_key (test_ai_router.H07DeepSeekUnconfigured) ... ok
+test_deepseek_trace_not_labelled_codex (test_ai_router.H08ProviderIsRecorded) ... ok
+test_three_purposes_present (test_ai_router.H17PromptsAndSchemas) ... ok
+test_trace_file_updated (test_ai_router.H18TraceWrittenBack) ... ok
+test_environment_key_is_used_when_no_file (test_ai_router.H19Credentials) ... ok
+test_file_permission_is_owner_only (test_ai_router.H19Credentials) ... ok
+test_key_not_in_config_or_archive (test_ai_router.H19Credentials) ... ok
+test_rejects_multiline_and_oversized (test_ai_router.H19Credentials) ... ok
+test_save_and_read (test_ai_router.H19Credentials) ... ok
+test_default_draws_only_ma20 (test_charts.J17DefaultSingleMa) ... ok
+test_explicit_single (test_charts.J17DefaultSingleMa) ... ok
+test_four_lines (test_charts.J18AllFourSelectable) ... ok
+test_none_selected_draws_no_line (test_charts.J18AllFourSelectable) ... ok
+test_unknown_period_is_skipped (test_charts.J19UnknownPeriodIgnored) ... ok
+test_implementation_samples_daily_not_weekly (test_charts.J20WeeklyUsesDailyAverage) ... ok
+test_weekly_axis_labels_use_weekly_dates (test_charts.J20WeeklyUsesDailyAverage) ... ok
+test_weekly_sample_matches_daily_average (test_charts.J20WeeklyUsesDailyAverage) ... ok
+test_every_bar_gets_a_volume_rect (test_charts.J21VolumeAlignedWithBars) ... ok
+test_missing_volume_skips_bar (test_charts.J21VolumeAlignedWithBars) ... ok
+test_short_history_message (test_charts.J22InsufficientData) ... ok
+test_all_five_charts_returned (test_charts.J23Dashboard) ... ok
+test_empty_series_message (test_charts.J23Dashboard) ... ok
+test_turnover_has_no_data_message (test_charts.J23Dashboard) ... ok
+test_gap_breaks_line_instead_of_zero (test_charts.J24BasisCurveZeroAxis) ... ok
+test_no_rows_message (test_charts.J24BasisCurveZeroAxis) ... ok
+test_turnover_empty_message (test_charts.J24BasisCurveZeroAxis) ... ok
+test_zero_axis_and_signed_values (test_charts.J24BasisCurveZeroAxis) ... ok
+test_default_config_loads (test_config.A01Default) ... ok
+test_rejects_other_schema (test_config.A02SchemaVersion) ... ok
+test_rejects_api_key (test_config.A03SecretsTopLevel) ... ok
+test_rejects_nested_secrets (test_config.A03SecretsTopLevel) ... ok
+test_accepts_full_set_but_normalises (test_config.A05MaPeriods) ... ok
+test_rejects_illegal_values (test_config.A05MaPeriods) ... ok
+test_rejects_other_sets (test_config.A05MaPeriods) ... ok
+test_saved_value_is_calculation_value (test_config.A08DisplayDoesNotLeakIntoCalculation) ... ok
+test_duplicate_ids_rejected (test_config.A09Symbols) ... ok
+test_mapping_target_accepts_etf (test_config.A09Symbols) ... ok
+test_mapping_target_must_be_tradable (test_config.A09Symbols) ... ok
+test_stocks_reject_index_codes (test_config.A09Symbols) ... ok
+test_auto_refresh_must_be_bool (test_config.A12NumericBoundaries) ... ok
+test_history_bars (test_config.A12NumericBoundaries) ... ok
+test_network_limits (test_config.A12NumericBoundaries) ... ok
+test_refresh_seconds (test_config.A12NumericBoundaries) ... ok
+test_top_n (test_config.A12NumericBoundaries) ... ok
+test_ai_defaults_are_filled (test_config.A15AiProvider) ... ok
+test_provider_accepts_both (test_config.A15AiProvider) ... ok
+test_provider_limited (test_config.A15AiProvider) ... ok
+test_timeout_bounds (test_config.A15AiProvider) ... ok
+test_rejects_credentials_and_params (test_config.A17DeepSeekUrl) ... ok
+test_requires_https (test_config.A17DeepSeekUrl) ... ok
+test_timeout_bounds (test_config.A17DeepSeekUrl) ... ok
+test_fixed_industries_reject_blank (test_config.A20OtherRules) ... ok
+test_indicator_consistency (test_config.A20OtherRules) ... ok
+test_industry_provider_fixed (test_config.A20OtherRules) ... ok
+test_max_import_bytes_bounds (test_config.A20OtherRules) ... ok
+test_unknown_keys_are_not_silently_dropped (test_config.A20OtherRules) ... ok
+test_evidence_is_not_duplicated_for_candidates (test_engine_validate.H09IndustryScope) ... ok
+test_no_full_industry_list_in_payload (test_engine_validate.H09IndustryScope) ... ok
+test_only_selected_industries_are_sent (test_engine_validate.H09IndustryScope) ... ok
+test_scope_policy_mentions_ranking_is_program_side (test_engine_validate.H09IndustryScope) ... ok
+test_knowledge_without_logic_layer_is_not_allowed (test_engine_validate.H11ReferenceChecks) ... ok
+test_unknown_evidence_reference (test_engine_validate.H11ReferenceChecks) ... ok
+test_unknown_logic_reference (test_engine_validate.H11ReferenceChecks) ... ok
+test_unknown_mode_reference (test_engine_validate.H11ReferenceChecks) ... ok
+test_unknown_proposal_reference (test_engine_validate.H11ReferenceChecks) ... ok
+test_duplicate_candidate (test_engine_validate.H12ScopeChecks) ... ok
+test_out_of_scope_candidate (test_engine_validate.H12ScopeChecks) ... ok
+test_candidate_without_evidence (test_engine_validate.H13BasisChecks) ... ok
+test_candidate_without_logic (test_engine_validate.H13BasisChecks) ... ok
+test_excluded_candidate_cannot_be_promoted (test_engine_validate.H13BasisChecks) ... ok
+test_missing_technical_cannot_be_promoted (test_engine_validate.H13BasisChecks) ... ok
+test_observe_stance_needs_no_basis (test_engine_validate.H13BasisChecks) ... ok
+test_duplicate_member (test_engine_validate.H15RankingChecks) ... ok
+test_empty_ranking_is_rejected (test_engine_validate.H15RankingChecks) ... ok
+test_extra_member (test_engine_validate.H15RankingChecks) ... ok
+test_missing_member (test_engine_validate.H15RankingChecks) ... ok
+test_full_coverage_has_no_missing (test_engine_validate.H17CoverageAndLimitations) ... ok
+test_uncovered_candidate_recorded (test_engine_validate.H17CoverageAndLimitations) ... ok
+test_complete_without_unknown (test_facts.F08Breadth) ... ok
+test_directory_incomplete_propagates (test_facts.F08Breadth) ... ok
+test_incomplete_when_unknown_price (test_facts.F08Breadth) ... ok
+test_scope_and_counts (test_facts.F08Breadth) ... ok
+test_amount_scope_is_shsz_a_including_st (test_facts.F09AmountScope) ... ok
+test_missing_amount_marks_incomplete (test_facts.F09AmountScope) ... ok
+test_adjacent_session_gives_change (test_facts.F11Margin) ... ok
+test_gap_does_not_claim_previous_session (test_facts.F11Margin) ... ok
+test_definition_present (test_facts.F12SealRate) ... ok
+test_incomplete_pool_leaves_none (test_facts.F12SealRate) ... ok
+test_mismatched_day_leaves_none (test_facts.F12SealRate) ... ok
+test_same_day_complete_pools (test_facts.F12SealRate) ... ok
+test_non_ok_coverage_becomes_limitation (test_facts.F13Limitations) ... ok
+test_ok_coverage_is_not_a_limitation (test_facts.F13Limitations) ... ok
+test_evidence_entry (test_facts.F14MarketVolume) ... ok
+test_independent_of_candidates (test_facts.F14MarketVolume) ... ok
+test_absent_basis_is_absent (test_facts.F15Basis) ... ok
+test_if_and_im_entered_evidence (test_facts.F15Basis) ... ok
+test_missing_dates_are_not_zero_filled (test_facts.F16LimitHistory) ... ok
+test_values (test_indicators.E01Sma) ... ok
+test_window_not_ready (test_indicators.E01Sma) ... ok
+test_constant_series (test_indicators.E02Ema) ... ok
+test_none_resets (test_indicators.E02Ema) ... ok
+test_adds_and_subtracts (test_indicators.E03Obv) ... ok
+test_gap_turns_none (test_indicators.E03Obv) ... ok
+test_formula (test_indicators.E05Cci) ... ok
+test_zero_deviation_returns_none (test_indicators.E05Cci) ... ok
+test_invalid_rows_dropped_and_counted (test_indicators.E06RejectsBadBars) ... ok
+test_later_row_wins_for_same_date (test_indicators.E07DedupAndSort)
+去重规则：输入中后出现的同日期记录覆盖先出现的。 ... ok
+test_output_sorted_by_date (test_indicators.E07DedupAndSort) ... ok
+test_only_five_and_twenty (test_indicators.E08MaPeriods) ... ok
+test_partial_with_reasons (test_indicators.E09ShortHistory) ... ok
+test_missing (test_indicators.E10EmptyHistory) ... ok
+test_aggregation_matches_source (test_indicators.E11Weekly) ... ok
+test_version_and_definition (test_indicators.E12Traceability) ... ok
+test_action_without_execution_asset (test_plans.I01ActionNeedsTradable) ... ok
+test_etf_is_accepted (test_plans.I01ActionNeedsTradable) ... ok
+test_index_is_not_tradable (test_plans.I01ActionNeedsTradable) ... ok
+test_bad_format (test_plans.I03ValidityFormat) ... ok
+test_good_format (test_plans.I03ValidityFormat) ... ok
+test_confirmed_reference_accepted (test_plans.I04KnowledgeReferences) ... ok
+test_draft_reference_rejected (test_plans.I04KnowledgeReferences) ... ok
+test_unknown_run_rejected (test_plans.I04KnowledgeReferences) ... ok
+test_observation_can_be_confirmed_with_gaps (test_plans.I05ObservationPlan) ... ok
+test_saved_as_observation (test_plans.I05ObservationPlan) ... ok
+test_complete_action_is_confirmed (test_plans.I06IncompleteActionCannotBeConfirmed) ... ok
+test_empty_basis_blocks_confirmation (test_plans.I06IncompleteActionCannotBeConfirmed) ... ok
+test_missing_list_blocks_confirmation (test_plans.I06IncompleteActionCannotBeConfirmed) ... ok
+test_pending_fields_block_confirmation (test_plans.I06IncompleteActionCannotBeConfirmed) ... ok
+test_buy_requires_tradable_code (test_plans.I08BackfillValidation) ... ok
+test_negative_number_rejected (test_plans.I08BackfillValidation) ... ok
+test_note_does_not_require_code (test_plans.I08BackfillValidation) ... ok
+test_unknown_action (test_plans.I08BackfillValidation) ... ok
+test_amount_from_price_and_quantity (test_plans.I10AmountComputed) ... ok
+test_explicit_amount_kept (test_plans.I10AmountComputed) ... ok
+test_bad_time_rejected (test_plans.I11TimeHandling) ... ok
+test_missing_time_rejected (test_plans.I11TimeHandling) ... ok
+test_naive_time_treated_as_cn (test_plans.I11TimeHandling) ... ok
+test_beyond_validity_window (test_plans.I12Deviations) ... ok
+test_clean_backfill_still_requires_review_note (test_plans.I12Deviations) ... ok
+test_different_instrument (test_plans.I12Deviations) ... ok
+test_no_plan_reference (test_plans.I12Deviations) ... ok
+test_note_does_not_create_instrument_deviation (test_plans.I12Deviations) ... ok
+test_plan_without_instrument (test_plans.I12Deviations) ... ok
+test_unconfirmed_plan_flagged (test_plans.I12Deviations) ... ok
+test_no_execution_record (test_plans.I13ReviewNeedsBackfill) ... ok
+test_unknown_evidence_rejected (test_plans.I14ReviewReferenceCheck) ... ok
+test_valid_evidence_accepted (test_plans.I14ReviewReferenceCheck) ... ok
+test_bad_proposal_index (test_plans.I15ReviewTraceability) ... ok
+test_proposal_becomes_draft_only (test_plans.I15ReviewTraceability) ... ok
+test_review_keeps_versions_and_refs (test_plans.I15ReviewTraceability) ... ok
+test_revise_allowed_fields (test_plans.I16PlanRevision) ... ok
+test_revise_rejects_protected_fields (test_plans.I16PlanRevision) ... ok
+test_revise_validates_result (test_plans.I16PlanRevision) ... ok
+test_all_clean_candidates_are_eligible (test_presentation.G01EligibleIds) ... ok
+test_filters (test_presentation.G01EligibleIds) ... ok
+test_sorting_is_repeatable (test_presentation.G02StableOrder) ... ok
+test_tie_break_by_asset_id (test_presentation.G02StableOrder) ... ok
+test_no_ai_source_is_flagged (test_presentation.G03ProgramFallbackLabelled) ... ok
+test_duplicated_ranking_falls_back (test_presentation.G04PartialAiRankingRejected) ... ok
+test_incomplete_ranking_falls_back (test_presentation.G04PartialAiRankingRejected) ... ok
+test_full_ranking_is_adopted (test_presentation.G05AiRankingUsed) ... ok
+test_fixed_industry_wins_first_match (test_presentation.G06GroupsDoNotOverlap) ... ok
+test_index_count_matches_config (test_presentation.G06GroupsDoNotOverlap) ... ok
+test_no_duplicate_across_groups (test_presentation.G06GroupsDoNotOverlap) ... ok
+test_group_uses_top3_in_order (test_presentation.G07IndustryTop3) ... ok
+test_top3_from_dynamic_ten (test_presentation.G07IndustryTop3) ... ok
+test_dynamic_analyzed_is_ten (test_presentation.G08DynamicStillAllAnalysed) ... ok
+test_eligible_count_reported (test_presentation.G08DynamicStillAllAnalysed) ... ok
+test_rank_missing_lists_ineligible (test_presentation.G09OverallTop3) ... ok
+test_top3_within_ordering (test_presentation.G09OverallTop3) ... ok
+test_no_second_ranking_implementation (test_presentation.G10SharedContract) ... ok
+test_page_and_report_share_one_selector (test_presentation.G10SharedContract) ... ok
+test_static_assets (test_server_api.J01Page) ... ok
+test_token_is_injected (test_server_api.J01Page) ... ok
+test_page_and_assets_are_local (test_server_api.J02NoExternalDependencies) ... ok
+test_state_shape_and_no_secret (test_server_api.J03State) ... ok
+test_version_reported (test_server_api.J03State) ... ok
+test_no_key_echo (test_server_api.J04AiConfigEndpoint) ... ok
+test_save_config_with_key_writes_credentials_only (test_server_api.J04AiConfigEndpoint) ... ok
+test_save_config_without_key (test_server_api.J04AiConfigEndpoint) ... ok
+test_bad_origin (test_server_api.J05WriteAuthorization) ... HTTP "POST /api/config HTTP/1.1" 403 -
+ok
+test_foreign_host (test_server_api.J05WriteAuthorization) ... HTTP "POST /api/config HTTP/1.1" 403 -
+ok
+test_missing_token (test_server_api.J05WriteAuthorization) ... HTTP "POST /api/config HTTP/1.1" 403 -
+ok
+test_read_does_not_need_token (test_server_api.J05WriteAuthorization) ... ok
+test_wrong_token (test_server_api.J05WriteAuthorization) ... HTTP "POST /api/config HTTP/1.1" 403 -
+ok
+test_empty_body (test_server_api.J08RequestValidation) ... HTTP "POST /api/config HTTP/1.1" 413 -
+ok
+test_error_envelope_has_no_traceback (test_server_api.J08RequestValidation) ... HTTP "POST /api/config HTTP/1.1" 400 -
+ok
+test_invalid_json (test_server_api.J08RequestValidation) ... HTTP "POST /api/config HTTP/1.1" 400 -
+ok
+test_non_object_body (test_server_api.J08RequestValidation) ... HTTP "POST /api/config HTTP/1.1" 400 -
+ok
+test_unknown_route (test_server_api.J08RequestValidation) ... HTTP "GET /api/nope HTTP/1.1" 404 -
+ok
+test_wrong_content_type (test_server_api.J08RequestValidation) ... HTTP "POST /api/config HTTP/1.1" 415 -
+ok
+test_all_read_routes (test_server_api.J10ReadEndpoints) ... ok
+test_knowledge_cannot_be_trashed (test_server_api.J11TrashEndpoints) ... HTTP "POST /api/objects/563f7325d2fb434ca294e8b8a806b26f/trash HTTP/1.1" 400 -
+ok
+test_revision_conflict (test_server_api.J11TrashEndpoints) ... HTTP "POST /api/objects/f8b9fe0fa103470eb18ff673dab3d57a/trash HTTP/1.1" 409 -
+ok
+test_trash_and_restore (test_server_api.J11TrashEndpoints) ... ok
+test_missing_run (test_server_api.J12Report) ... HTTP "GET /api/runs/doesnotexist HTTP/1.1" 404 -
+ok
+test_report_is_self_contained (test_server_api.J12Report) ... ok
+test_report_shows_gaps (test_server_api.J12Report) ... ok
+test_run_view_contains_presentation_and_charts (test_server_api.J12Report) ... ok
+test_closed_schedule_has_no_next_run (test_server_api.J14ScheduleControl) ... ok
+test_startup_forces_schedule_off (test_server_api.J14ScheduleControl) ... ok
+test_user_can_open_schedule_from_the_page (test_server_api.J14ScheduleControl) ... ok
+test_archive_is_versioned_and_secret_free (test_server_api.J16Export) ... ok
+test_choice_persisted_in_browser_storage (test_server_api.J25FrontendContract) ... ok
+test_default_is_only_ma20 (test_server_api.J25FrontendContract) ... ok
+test_ma_choices_are_rendered_per_card (test_server_api.J25FrontendContract) ... ok
+test_no_page_level_period_switch (test_server_api.J25FrontendContract) ... ok
+test_only_supported_periods_are_accepted (test_server_api.J25FrontendContract) ... ok
+test_period_switch_is_per_card (test_server_api.J25FrontendContract) ... ok
+test_lock_is_reusable_after_release (test_server_api.K01InstanceLock) ... ok
+test_second_lock_is_rejected (test_server_api.K01InstanceLock) ... ok
+test_cancel_endpoint_is_acknowledged (test_server_api.K02JobMutex) ... ok
+test_second_job_is_rejected (test_server_api.K02JobMutex) ... HTTP "POST /api/run HTTP/1.1" 409 -
+ok
+test_running_rows_are_marked_interrupted (test_server_api.K05Interrupted) ... ok
+test_evidence_keeps_snapshot_date (test_server_api.K07RunWithoutAi) ... ok
+test_failed_snapshot_marks_run_failed (test_server_api.K07RunWithoutAi) ... ok
+test_partial_with_skip_reason (test_server_api.K07RunWithoutAi) ... ok
+test_compute_on_fixture_snapshot (test_server_api.K11CommandLine) ... ok
+test_missing_input_file_fails_loudly (test_server_api.K11CommandLine)
+输入文件不存在时必须非零退出，不能静默成功。 ... ok
+test_port_validation (test_server_api.K11CommandLine) ... ok
+test_report_requires_existing_run (test_server_api.K11CommandLine) ... ok
+test_status (test_server_api.K11CommandLine) ... ok
+test_b01_create (test_store.BGroup) ... ok
+test_b02_confirm_needs_actor (test_store.BGroup) ... ok
+test_b03_confirm_records_identity (test_store.BGroup) ... ok
+test_b04_confirm_is_idempotent (test_store.BGroup) ... ok
+test_b05_revise_creates_new_version (test_store.BGroup) ... ok
+test_b06_stale_expected_revision_rejected (test_store.BGroup) ... ok
+test_b07_cannot_confirm_expired_draft (test_store.BGroup) ... ok
+test_b08_immutable_kinds (test_store.BGroup) ... ok
+test_b09_kind_and_identifier (test_store.BGroup) ... ok
+test_b10_duplicate_id (test_store.BGroup) ... ok
+test_b11_list_returns_latest_only (test_store.BGroup) ... ok
+test_b12_draft_does_not_hide_confirmed (test_store.BGroup) ... ok
+test_b13_versions_descending (test_store.BGroup) ... ok
+test_b14_reference_format (test_store.BGroup) ... ok
+test_c01_plan_can_be_trashed (test_store.CGroup) ... ok
+test_c02_execution_can_be_trashed (test_store.CGroup) ... ok
+test_c03_only_plan_and_execution (test_store.CGroup) ... ok
+test_c04_restore_keeps_everything (test_store.CGroup) ... ok
+test_c05_revision_mismatch (test_store.CGroup) ... ok
+test_c06_no_revise_after_delete (test_store.CGroup) ... ok
+test_c07_no_confirm_after_delete (test_store.CGroup) ... ok
+test_c11_no_permanent_purge (test_store.CGroup) ... ok
+test_c12_lifecycle_survives_archive (test_store.CGroup) ... ok
+test_c13_actor_required (test_store.CGroup) ... ok
+test_c08_cannot_backfill_on_deleted_plan (test_store.DeletedPlanBlocksDownstream) ... ok
+test_c09_cannot_review_deleted_plan (test_store.DeletedPlanBlocksDownstream) ... ok
+test_c10_history_review_unchanged (test_store.DeletedPlanBlocksDownstream) ... ok
+test_plain_weekday (test_volume_price.F01PreviousDay) ... ok
+test_skips_closed_dates (test_volume_price.F01PreviousDay) ... ok
+test_after_close_is_complete (test_volume_price.F02CompletedAsOf) ... ok
+test_date_only_in_the_past_is_complete (test_volume_price.F02CompletedAsOf) ... ok
+test_intraday_is_not_complete (test_volume_price.F02CompletedAsOf) ... ok
+test_unparsable_is_not_complete (test_volume_price.F02CompletedAsOf) ... ok
+test_no_previous_day_comparison_when_gap (test_volume_price.F03NonContiguous) ... ok
+test_forming_bar_is_excluded (test_volume_price.F04FormingBar) ... ok
+test_eligible_needs_full_comparison (test_volume_price.F05Eligible) ... ok
+test_zero_volume_is_not_eligible (test_volume_price.F05Eligible) ... ok
+test_alternating_series (test_volume_price.F06UpDownVolumeRatio) ... ok
+test_no_down_days_returns_none (test_volume_price.F06UpDownVolumeRatio) ... ok
+test_ratio_helper (test_volume_price.F06UpDownVolumeRatio) ... ok
+test_contiguous_rows_are_compared (test_volume_price.F07TurnoverSummary) ... ok
+test_empty_rows (test_volume_price.F07TurnoverSummary) ... ok
+test_gap_prevents_previous_day_claim (test_volume_price.F07TurnoverSummary) ... ok
+test_sorted_by_date (test_volume_price.F07TurnoverSummary) ... ok
+
+----------------------------------------------------------------------
+Ran 272 tests in 8.373s
+
+OK
