@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="csrf-token" content="__P03_TOKEN__">
+<title>trade · 交易辅助</title>
+<link rel="stylesheet" href="/style.css">
+<script src="/app.js" defer></script>
+</head>
+<body>
+<aside class="sidebar">
+  <a class="brand" href="/" aria-label="trade首页"><span class="brand-mark">t</span><span>trade<small>翔宇的交易工作台</small></span></a>
+  <nav aria-label="主要功能">
+    <button class="nav-item selected" data-view="overview">概览<span>市场与方向</span></button>
+    <button class="nav-item" data-view="candidates">候选<span>图表与依据</span></button>
+    <button class="nav-item" data-view="plans">计划<span>确认 · 回填 · 复盘</span></button>
+    <button class="nav-item" data-view="knowledge">档案<span>逻辑 · 技术 · 模式</span></button>
+    <button class="nav-item" data-view="settings">配置<span>候选与本地资料</span></button>
+  </nav>
+  <div class="sidebar-foot"><span class="dot"></span> 本地运行 · 人工交易<p>源数据与判断保留依据<br>实际买卖由你完成</p></div>
+</aside>
+<main>
+  <header class="topbar">
+    <div><div class="eyebrow">P03 / 交易辅助系统</div><h1 id="page-title">市场概览</h1></div>
+    <div class="actions"><button id="cancel-run" class="button subtle" data-action="cancel-run" hidden>停止本次</button><button id="run-button" class="button primary" data-action="run">更新分析 <span aria-hidden="true">↻</span></button></div>
+  </header>
+  <div class="runbar"><div id="runtime-status" aria-live="polite">正在连接本地服务…</div><label class="toggle"><input id="auto-refresh" type="checkbox"> <span id="auto-label">运行时每小时刷新</span></label></div>
+  <div class="progress" id="progress" hidden><span></span></div>
+  <div id="global-message" class="notice" hidden></div>
+  <div class="view" id="view-content"><div class="empty card">正在读取本地资料…</div></div>
+  <footer class="page-foot">图表与说明均按各来源的实际数据时点展示。关闭本地服务后，周期刷新停止。</footer>
+</main>
+<dialog id="editor" aria-labelledby="dialog-title"><form id="editor-form"><div class="dialog-head"><h2 id="dialog-title"></h2><button type="button" class="icon-button" data-action="close-dialog" aria-label="关闭">×</button></div><div id="editor-body"></div><div id="form-error" class="notice error" hidden></div><div class="dialog-actions"><button type="button" class="button subtle" data-action="close-dialog">取消</button><button type="submit" id="form-submit" class="button primary">保存</button></div></form></dialog>
+<div id="toast" role="status" aria-live="polite" hidden></div>
+</body></html>

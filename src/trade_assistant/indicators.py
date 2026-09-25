@@ -3,6 +3,7 @@ from collections import deque
 from datetime import datetime
 
 from .util import CN, number
+from .market_time import session_info, week_forming
 
 FORMULA_VERSION = "p03-indicators-1"
 
@@ -82,8 +83,7 @@ def weekly(bars):
                 a, b = group.get(name), bar.get(name)
                 group[name] = a + b if a is not None and b is not None else None
     for group in result:
-        group["forming"] = group["key"] == current_week and (
-            today.weekday() < 4 or (today.weekday() == 4 and (today.hour < 15 or group["date"] < today.strftime("%Y-%m-%d"))))
+        group["forming"] = group["key"] == current_week and week_forming(group["date"])
         group.pop("key")
     return result
 
@@ -133,6 +133,11 @@ def calculate(history, parameters):
         reasons.append("OBV 成交量历史存在缺口")
     if rejected:
         reasons.append("有 %s 条 OHLC 无效，未参与计算" % rejected)
+    if "未独立核实" in str(history.get("volume_unit", "")):
+        reasons.append("成交量按提供方原单位保留，绝对单位未独立核实；OBV不用于跨品种绝对量比较")
+    session = session_info(bars[-1]["date"])
+    if session["calendar_verified"] and bars[-1]["date"] < session["expected_latest_date"]:
+        reasons.append("日线源日期早于最近交易日：" + bars[-1]["date"])
     clock = datetime.now(CN)
     forming = bars[-1]["date"] == clock.strftime("%Y-%m-%d") and clock.weekday() < 5 and clock.hour < 15
     return {"status": "partial" if reasons else "ok", "reasons": reasons, "bars": bars,

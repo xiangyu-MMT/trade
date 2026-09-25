@@ -1,9 +1,10 @@
 import csv
 import io
+import re
 from datetime import datetime, timedelta
 
 from ..util import AppError, CN, epoch_time, number
-from .ths import meta
+from .ths import Tables, meta
 
 
 class Macro:
@@ -33,6 +34,12 @@ class Macro:
                 **meta(r, epoch_time(info.get("regularMarketTime")) or rows[-1]["time"])}
 
     def tips(self):
+        try:
+            return self._fred_tips()
+        except AppError:
+            return self._fed_tips()
+
+    def _fred_tips(self):
         start = (datetime.now(CN) - timedelta(days=180)).strftime("%Y-%m-%d")
         r = self.http.get("https://fred.stlouisfed.org/graph/fredgraph.csv", params={"id": "DFII10", "cosd": start},
                           ttl=3600, stale=True)
@@ -46,4 +53,29 @@ class Macro:
             raise AppError("source_format", "FRED 10年TIPS实际收益率暂不可得", status=503)
         return {"name": "美国10年TIPS实际收益率", "symbol": "DFII10", "unit": "%", "rows": rows,
                 "value": rows[-1]["value"], "definition": "FRED 日频发布序列，非盘中实时值",
+                **meta(r, rows[-1]["time"])}
+
+    def _fed_tips(self):
+        r = self.http.get("https://www.federalreserve.gov/releases/h15/", ttl=3600, stale=True)
+        parser = Tables()
+        parser.feed(r["text"])
+        dates, target, inflation = [], None, False
+        for row in parser.rows:
+            cells = [x["text"] for x in row]
+            if cells and cells[0] == "Instruments":
+                for text in cells[1:]:
+                    try:
+                        dates.append(datetime.strptime(re.sub(r"\s+", "", text), "%Y%b%d").strftime("%Y-%m-%d"))
+                    except ValueError:
+                        dates.append(None)
+            if cells and "Inflation indexed" in cells[0]:
+                inflation = True
+            if inflation and cells and cells[0] == "10-year":
+                target = cells[1:]
+                break
+        rows = [{"time": d, "value": number(v)} for d, v in zip(dates, target or []) if d and number(v) is not None]
+        if not rows:
+            raise AppError("source_format", "美联储H.15实际收益率表格暂不可解析", status=503)
+        return {"name": "美国10年TIPS实际收益率", "symbol": "DFII10", "unit": "%", "rows": rows,
+                "value": rows[-1]["value"], "definition": "美联储H.15 Inflation indexed 10-year 日频发布；非盘中实时值",
                 **meta(r, rows[-1]["time"])}

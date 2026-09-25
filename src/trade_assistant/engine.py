@@ -1,3 +1,5 @@
+import threading
+
 from .codex_bridge import CodexBridge
 from .collector import Collector
 from .facts import compute
@@ -13,6 +15,14 @@ class Engine:
         self.knowledge = Knowledge(self.store)
         self.knowledge.seed()
         self.bridge = CodexBridge(settings)
+        self.cancelled = threading.Event()
+        self.collector = None
+
+    def cancel(self):
+        self.cancelled.set()
+        if self.collector:
+            self.collector.http.deadline = 0
+        self.bridge.cancel()
 
     def analysis_input(self, facts, run_id=None):
         candidates = []
@@ -27,6 +37,7 @@ class Engine:
                                "weekly": week[-8:], "status": tech["status"], "missing": tech.get("reasons", [])})
         industry_brief = [{k: row.get(k) for k in ("asset_id", "name", "change_pct", "net_flow", "flow_source", "filters_complete")} for row in facts["industries"]]
         return {"run_id": run_id, "asof": facts["asof"], "requested_at": now(),
+                "market_calendar": facts.get("calendar"),
                 "candidates": candidates, "market": facts["market"], "industry_ranking": facts["industry_ranking"],
                 "industry_structure": industry_brief, "evidence": facts["evidence"],
                 "coverage": facts["coverage"], "limitations": facts["limitations"],
@@ -37,7 +48,9 @@ class Engine:
     @staticmethod
     def validate_analysis(result, payload):
         candidate_map = {x["asset_id"]: x for x in payload["candidates"]}
-        knowledge = {x["ref"]: x["kind"] for x in payload["confirmed_knowledge"]}
+        knowledge = {x["ref"]: x for x in payload["confirmed_knowledge"]}
+        allowed_logic = {k for k, v in knowledge.items() if v["kind"] == "logic" or "logic" in v.get("layers", [])}
+        allowed_modes = {k for k, v in knowledge.items() if v["kind"] == "mode" or "mode" in v.get("layers", [])}
         evidence = set(payload["evidence"])
         seen = set()
 
@@ -45,15 +58,15 @@ class Engine:
             if any(v not in allowed for v in values):
                 raise AppError("invalid_ai_reference", "Codex 引用了输入中不存在的" + label, status=503)
 
-        refs(result["market"]["mode_refs"], {k for k, v in knowledge.items() if v == "mode"}, "模式")
+        refs(result["market"]["mode_refs"], allowed_modes, "模式")
         refs(result["market"]["evidence_refs"], evidence, "事实")
         for row in result["candidates"]:
             aid = row["asset_id"]
             if aid not in candidate_map or aid in seen:
                 raise AppError("invalid_ai_scope", "Codex 候选超出范围或重复", {"asset_id": aid}, 503)
             seen.add(aid)
-            refs(row["logic_refs"], {k for k, v in knowledge.items() if v == "logic"}, "逻辑")
-            refs(row["mode_refs"], {k for k, v in knowledge.items() if v == "mode"}, "模式")
+            refs(row["logic_refs"], allowed_logic, "逻辑")
+            refs(row["mode_refs"], allowed_modes, "模式")
             refs(row["evidence_refs"], evidence, "事实")
             if row["stance"] == "candidate" and (not row["logic_refs"] or not row["evidence_refs"] or candidate_map[aid]["excluded"]):
                 raise AppError("invalid_ai_basis", "可关注候选缺乏已确认逻辑/证据，或属于排除范围", {"asset_id": aid}, 503)
@@ -75,8 +88,12 @@ class Engine:
         progress = progress or (lambda stage, detail: None)
         input_mode = "saved_snapshot" if snapshot else "live"
         ident = self.store.create_run(metadata={"trigger": trigger, "input_mode": input_mode})
+        self.cancelled.clear()
         try:
-            snapshot = snapshot or Collector(self.settings, progress).collect()
+            if snapshot is None:
+                self.collector = Collector(self.settings, progress)
+                snapshot = self.collector.collect()
+                self.collector = None
             self.store.update_run(ident, snapshot=snapshot)
             progress("计算", "技术指标与全市场盘面")
             facts = compute(snapshot)
@@ -85,6 +102,8 @@ class Engine:
             if no_ai:
                 ai_error = {"code": "ai_skipped", "message": "本轮按请求只计算程序事实，未调用AI"}
             else:
+                if self.cancelled.is_set():
+                    raise AppError("cancelled", "本轮已停止，已取得资料保留", status=409)
                 progress("Codex", "正在对照事实与已确认档案推导")
                 try:
                     reply = self.analyze(facts, ident)

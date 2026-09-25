@@ -3,6 +3,7 @@
 计划标的是指定asset_id。execution_asset为空时，execution_asset_id必须为null，plan_type必须为observation；不得自行挑选ETF或其他股票。
 有用户指定的execution_asset时可形成该品种草稿，但所有计划都必须经用户确认，绝不声称已经执行。
 依据分为逻辑、技术、模式；区分当前可证事实、缺失证据、数据日期与请求日期。缺少历史、逻辑依据或当前行情时，优先写出观察与等待条件。
+market_calendar若确认今日休市且源日期匹配最近交易日，不把该数据误写为延迟，也不要要求补充休市期间不存在的盘中行情；计划可写为下一交易时段需要复核的条件。
 entry、exit、position_risk、validity均为人可阅读的条件文本。没有已确认risk_rules时，position_risk写待补充，不给出自创仓位、止损百分比或风险预算。
 不以过去一日的数据假装当前实时信号，不编造买入价格、收益、胜率或缺少的来源。条件尚不能确定时写“待补充”并在missing列出。
 knowledge_refs只使用confirmed_knowledge或risk_rules的ref；evidence_refs只用evidence键。文本简洁，每个字段只保留对计划有用的内容。

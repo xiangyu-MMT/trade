@@ -77,6 +77,7 @@ class Plans:
         if not execution and match["kind"] == "stock" and any(x["asset_id"] == asset_id for x in config["stocks"]):
             execution = {"asset_id": asset_id, "name": match["name"]}
         input_data = {"run_id": run_id, "asset_id": asset_id, "name": match["name"],
+                      "market_calendar": run["facts"].get("calendar"),
                       "execution_asset": execution, "asof": run["facts"]["asof"],
                       "analysis": opinion, "market": run["analysis"]["result"]["market"],
                       "evidence": run["facts"]["evidence"], "confirmed_knowledge": archive,
@@ -122,7 +123,7 @@ class Plans:
             raise AppError("validation_error", "对象不是计划")
         data = self.validate(plan["payload"])
         if data["plan_type"] == "action":
-            if data["missing"] or any(not data[k].strip() for k in PLAN_FIELDS) or any(not x.strip() for x in data["basis"].values()):
+            if data["missing"] or any(not data[k].strip() or "待补充" in data[k] for k in PLAN_FIELDS) or any(not x.strip() for x in data["basis"].values()):
                 raise AppError("incomplete_plan", "具体品种计划仍有待补充项，请先完善；也可保留为观察计划")
         return self.store.confirm(ident, revision, actor)
 

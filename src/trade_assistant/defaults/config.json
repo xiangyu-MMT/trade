@@ -34,6 +34,7 @@
   ],
   "unresolved_observations": ["中证金融：请确认具体指数代码后加入 watch_indices", "微盘股：请确认所采用指数口径后加入 watch_indices"],
   "history_bars": 360,
+  "max_import_bytes": 104857600,
   "refresh_seconds": 3600,
   "auto_refresh": true,
   "network": {"timeout": 10, "workers": 4, "budget_seconds": 240},

@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 
 from trade_assistant.config import Settings
-from trade_assistant.util import AppError, dumps, write_json
+from trade_assistant.util import AppError, InstanceLock, dumps, write_json
 
 
 def main():
@@ -25,6 +25,12 @@ def main():
     run = sub.add_parser("run", help="执行并保存完整分析轮次")
     run.add_argument("--snapshot", help="使用已保存真实快照，保留原始数据日期")
     run.add_argument("--no-ai", action="store_true", help="仅生成程序事实，并明确标记AI未执行")
+    serve = sub.add_parser("serve", help="启动本地HTML交互系统")
+    serve.add_argument("--port", type=int, default=8765)
+    serve.add_argument("--no-browser", action="store_true")
+    export = sub.add_parser("report", help="导出指定分析轮次的自包含HTML")
+    export.add_argument("--run-id", required=True)
+    export.add_argument("--output", required=True)
     args = parser.parse_args()
     try:
         settings = Settings(args.home)
@@ -65,8 +71,25 @@ def main():
                     print(dumps(result, True))
             else:
                 snapshot = json.loads(Path(args.snapshot).read_text(encoding="utf-8")) if args.snapshot else None
-                result = engine.run(lambda stage, detail: print(stage + "：" + detail, file=sys.stderr, flush=True), snapshot, args.no_ai)
+                with InstanceLock(settings.home):
+                    result = engine.run(lambda stage, detail: print(stage + "：" + detail, file=sys.stderr, flush=True), snapshot, args.no_ai)
                 print(dumps({k: result[k] for k in ("id", "status", "created_at", "finished_at", "error", "metadata")}, True))
+        elif args.command == "serve":
+            from trade_assistant.server import serve
+            if not 0 <= args.port <= 65535:
+                raise AppError("validation_error", "端口必须为0–65535")
+            with InstanceLock(settings.home):
+                serve(settings, args.port, not args.no_browser)
+        elif args.command == "report":
+            from trade_assistant.store import Store
+            from trade_assistant.report import render
+            run = Store(settings.home).get_run(args.run_id)
+            if not run.get("facts"):
+                raise AppError("no_report", "该轮没有可导出的报告")
+            path = Path(args.output)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(render(run), encoding="utf-8")
+            print(dumps({"output": str(path), "run_id": run["id"]}))
     except AppError as exc:
         print(dumps({"error": exc.as_dict()}, True), file=sys.stderr)
         return 1

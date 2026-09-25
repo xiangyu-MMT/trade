@@ -1,6 +1,7 @@
 import statistics
 
 from .indicators import FORMULA_VERSION, calculate
+from .market_time import session_info
 from .providers.eastmoney import eligible
 from .util import AppError, now
 
@@ -105,8 +106,10 @@ def compute(snapshot, config=None):
         macro.append(row)
         evidence[row["evidence_id"]] = {k: v for k, v in row.items() if k != "rows"}
     evidence["data:coverage"] = {"coverage": snapshot.get("coverage", []), "asof": snapshot.get("asof")}
+    market_calendar = session_info(snapshot.get("asof"))
+    evidence["market:calendar"] = market_calendar
     return {"schema_version": 1, "snapshot_id": snapshot["id"], "created_at": now(),
-            "asof": snapshot.get("asof"), "formula_version": FORMULA_VERSION,
+            "asof": snapshot.get("asof"), "formula_version": FORMULA_VERSION, "calendar": market_calendar,
             "candidates": candidate_facts, "watch_indices": watches,
             "market": mf, "industries": snapshot.get("industries", []),
             "industry_ranking": snapshot.get("industry_ranking"), "margin": margin_fact,

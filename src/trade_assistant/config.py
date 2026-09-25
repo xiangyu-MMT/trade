@@ -14,6 +14,16 @@ INDEX_SYMBOL = re.compile(r"^(?:sh|sz|csi)\d{6}$")
 def validate(config):
     if not isinstance(config, dict) or config.get("schema_version") != 1:
         raise AppError("validation_error", "配置 schema_version 必须为 1")
+    def reject_secrets(value):
+        if isinstance(value, dict):
+            for key, child in value.items():
+                if str(key).lower() in {"api_key", "access_token", "refresh_token", "password", "authorization", "cookie", "secret"}:
+                    raise AppError("validation_error", "请勿将凭据写入配置或导出文件")
+                reject_secrets(child)
+        elif isinstance(value, list):
+            for child in value:
+                reject_secrets(child)
+    reject_secrets(config)
     if config.get("industry_provider") != "ths":
         raise AppError("validation_error", "行业口径必须为同花顺 ths")
     for key in ("fixed_industries", "indices", "stocks", "watch_indices", "etf_observations"):
@@ -72,6 +82,10 @@ def validate(config):
     for item in config["macro_symbols"]:
         if not isinstance(item, dict) or not all(isinstance(item.get(k), str) and item[k] for k in ("name", "symbol", "unit")):
             raise AppError("validation_error", "宏观观察项需要 name/symbol/unit")
+        if not re.fullmatch(r"[A-Za-z0-9^=._-]{1,40}", item["symbol"]):
+            raise AppError("validation_error", "宏观 symbol 含不支持的字符")
+    if type(config.get("max_import_bytes", 104857600)) is not int or not 1048576 <= config.get("max_import_bytes", 104857600) <= 536870912:
+        raise AppError("validation_error", "导入上限应为1MB–512MB的字节数")
     return copy.deepcopy(config)
 
 

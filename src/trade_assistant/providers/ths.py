@@ -105,6 +105,23 @@ class Ths:
         return {"items": result, "errors": errors, "pages": len(responses)}
 
     def today(self, code):
+        try:
+            return self._today(code)
+        except AppError as exc:
+            r = self.http.data("https://d.10jqka.com.cn/v6/line/bk_%s/01/last.js" % code,
+                               referer=self.referer, ttl=900, stale=True)
+            rows = {}
+            self._bars(r["data"].get("data", ""), rows)
+            if not rows:
+                raise exc
+            bar = rows[max(rows)]
+            return {"asset_id": "ths:" + code, "name": r["data"].get("name", code),
+                    **{k: bar[k] for k in ("open", "high", "low", "close", "volume", "amount")},
+                    "volume_unit": "股（提供方行业汇总）", "amount_unit": "元", "precision": "date",
+                    "fallback": "当日接口不可用，读取同花顺最近日线；保留该日日期，不冒充盘中值",
+                    **meta(r, bar["date"])}
+
+    def _today(self, code):
         r = self.http.data("https://d.10jqka.com.cn/v6/line/bk_%s/01/today.js" % code,
                            referer=self.referer)
         obj = r["data"].get("bk_" + code)

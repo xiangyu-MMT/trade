@@ -99,3 +99,41 @@ def require_text(value, field, limit=20000, allow_empty=False):
     if not isinstance(value, str) or len(value) > limit or (not allow_empty and not value.strip()):
         raise AppError("validation_error", "%s 必须是长度不超过 %s 的文本" % (field, limit))
     return value.strip()
+
+
+class InstanceLock:
+    """One running application per data directory; lock files are kept, never deleted."""
+    def __init__(self, home):
+        self.path = Path(home) / "runtime.lock"
+        self.file = None
+
+    def __enter__(self):
+        self.file = self.path.open("a+")
+        self.file.seek(0)
+        try:
+            if os.name == "nt":
+                import msvcrt
+                if self.path.stat().st_size == 0:
+                    self.file.write("1")
+                    self.file.flush()
+                self.file.seek(0)
+                msvcrt.locking(self.file.fileno(), msvcrt.LK_NBLCK, 1)
+            else:
+                import fcntl
+                fcntl.flock(self.file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError:
+            self.file.close()
+            self.file = None
+            raise AppError("already_running", "该数据目录已有服务运行，请使用现有窗口或另选 --home", status=409)
+        return self
+
+    def __exit__(self, *args):
+        if self.file:
+            if os.name == "nt":
+                import msvcrt
+                self.file.seek(0)
+                msvcrt.locking(self.file.fileno(), msvcrt.LK_UNLCK, 1)
+            else:
+                import fcntl
+                fcntl.flock(self.file.fileno(), fcntl.LOCK_UN)
+            self.file.close()

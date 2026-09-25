@@ -26,6 +26,13 @@ def split_reference(value):
         raise AppError("validation_error", "引用格式应为对象ID@版本")
 
 
+def trace_identifier(trace):
+    if re.fullmatch(r"[a-f0-9]{32}", str(trace.get("record_id", ""))):
+        return trace["record_id"]
+    match = re.search(r"([a-f0-9]{32})[\\/]?$", str(trace.get("record", "")))
+    return match.group(1) if match else None
+
+
 class Store:
     def __init__(self, home):
         self.home = Path(home)
@@ -241,7 +248,30 @@ class Store:
             conn.execute("BEGIN")
             objects = [dict(row) for row in conn.execute("SELECT * FROM objects ORDER BY id,revision")]
             runs = [dict(row) for row in conn.execute("SELECT * FROM runs ORDER BY created_at")]
-        return {"archive_version": 1, "exported_at": now(), "config": config, "objects": objects, "runs": runs}
+        record_ids = set()
+        for row in objects:
+            trace = json.loads(row["payload"]).get("ai_trace") or {}
+            if trace_identifier(trace):
+                record_ids.add(trace_identifier(trace))
+        for row in runs:
+            trace = (json.loads(row["analysis"]) if row["analysis"] else {}).get("trace") or {}
+            if trace_identifier(trace):
+                record_ids.add(trace_identifier(trace))
+        records = {}
+        ai_root = self.home / "ai"
+        if ai_root.is_dir() and not ai_root.is_symlink():
+            record_ids.update(p.name for p in ai_root.iterdir()
+                              if p.is_dir() and not p.is_symlink() and re.fullmatch(r"[a-f0-9]{32}", p.name))
+        names = ("input.json", "result.json", "trace.json", "stdout.jsonl", "stderr.log")
+        for ident in record_ids:
+            if not re.fullmatch(r"[a-f0-9]{32}", ident):
+                continue
+            folder = self.home / "ai" / ident
+            if folder.is_dir() and not folder.is_symlink():
+                records[ident] = {name: (folder / name).read_text(encoding="utf-8") for name in names
+                                  if (folder / name).is_file() and not (folder / name).is_symlink()}
+        return {"archive_version": 1, "exported_at": now(), "config": config,
+                "objects": objects, "runs": runs, "ai_records": records}
 
     def import_data(self, archive):
         if not isinstance(archive, dict) or archive.get("archive_version") != 1:
@@ -252,6 +282,21 @@ class Store:
         obj_columns = ("id", "kind", "revision", "status", "payload", "created_at", "confirmed_at", "confirmed_by")
         run_columns = ("id", "status", "created_at", "finished_at", "snapshot", "facts", "analysis", "error", "metadata")
         staged_objects, staged_runs = {}, {}
+        ai_records = archive.get("ai_records", {})
+        if not isinstance(ai_records, dict) or len(ai_records) > 10000:
+            raise AppError("validation_error", "AI归档结构不合理")
+        for ident, files in ai_records.items():
+            if not re.fullmatch(r"[a-f0-9]{32}", str(ident)) or not isinstance(files, dict):
+                raise AppError("validation_error", "AI归档标识无效")
+            for name, text in files.items():
+                if name not in {"input.json", "result.json", "trace.json", "stdout.jsonl", "stderr.log"} or not isinstance(text, str) or len(text) > 4000000:
+                    raise AppError("validation_error", "AI归档文件类型或长度无效")
+                folder = self.home / "ai" / ident
+                path = folder / name
+                if (self.home / "ai").is_symlink() or folder.is_symlink() or path.is_symlink():
+                    raise AppError("validation_error", "本地AI归档路径为链接，未执行导入")
+                if path.exists() and path.read_text(encoding="utf-8") != text:
+                    raise AppError("conflict", "AI原始归档与本地内容冲突，未覆盖", {"id": ident}, 409)
         for row in objects:
             if not isinstance(row, dict) or set(row) != set(obj_columns) or not IDENTIFIER.fullmatch(str(row.get("id", ""))):
                 raise AppError("validation_error", "迁移对象结构无效")
@@ -322,4 +367,11 @@ class Store:
                 else:
                     conn.execute("INSERT INTO runs VALUES (?,?,?,?,?,?,?,?,?)", [row[k] for k in run_columns])
                     added_runs += 1
-        return {"objects_added": added_objects, "runs_added": added_runs}
+            for ident, files in ai_records.items():
+                folder = self.home / "ai" / ident
+                folder.mkdir(parents=True, exist_ok=True)
+                for name, text in files.items():
+                    path = folder / name
+                    if not path.exists():
+                        path.write_text(text, encoding="utf-8")
+        return {"objects_added": added_objects, "runs_added": added_runs, "ai_records": len(ai_records)}

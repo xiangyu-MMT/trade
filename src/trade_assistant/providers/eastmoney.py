@@ -1,8 +1,12 @@
 import concurrent.futures
+import io
 import re
+import zipfile
+import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta
 
 from ..util import AppError, CN, date_text, epoch_time, number
+from ..market_time import calendar, is_session_day
 from .ths import meta
 
 FIELDS = "f12,f13,f14,f2,f3,f5,f6,f15,f16,f17,f18,f124"
@@ -157,6 +161,15 @@ class Eastmoney:
         return rows, meta(r)
 
     def quote(self, asset_id):
+        if asset_id.startswith("csi") or asset_id == "sh932000":
+            history = self.csi_history(asset_id, 10)
+            bars = history["bars"]
+            last, previous = bars[-1], bars[-2] if len(bars) > 1 else None
+            return {"asset_id": asset_id, "name": history["provider_name"], **{k: last.get(k) for k in ("open", "high", "low", "close", "volume", "amount")},
+                    "previous_close": previous["close"] if previous else None,
+                    "change_pct": (last["close"] / previous["close"] - 1) * 100 if previous else None,
+                    "asof": last["date"], "source": history["source"], "precision": "date",
+                    "volume_unit": history["volume_unit"], "amount_unit": "未核实"}
         try:
             r = self.http.data("https://push2.eastmoney.com/api/qt/stock/get", params={
                 "secid": secid(asset_id), "fltt": 2,
@@ -200,6 +213,8 @@ class Eastmoney:
                 **meta(r, asof)}
 
     def history(self, asset_id, count=360, kind="index"):
+        if asset_id.startswith("csi") or asset_id == "sh932000":
+            return self.csi_history(asset_id, count)
         try:
             params = {
                 "secid": secid(asset_id), "fields1": "f1,f2,f3,f4,f5,f6",
@@ -245,6 +260,45 @@ class Eastmoney:
             return {"bars": bars, "source": "新浪日线（替代）", "sources": [meta(r)],
                     "asof": bars[-1]["date"], "volume_unit": "股/提供方指数汇总", "amount_unit": "缺失",
                     "adjustment": "未复权替代源，不与前复权历史拼接"}
+
+    def csi_history(self, asset_id, count):
+        code = asset_id[-6:]
+        rows, sources, errors = [], [], []
+        clock = datetime.now(CN)
+        for year in range(clock.year, clock.year - 4, -1):
+            try:
+                r = self.http.data("https://www.csindex.com.cn/csindex-home/perf/index-perf", params={
+                    "indexCode": code, "startDate": "%s0101" % year,
+                    "endDate": clock.strftime("%Y%m%d") if year == clock.year else "%s1231" % year},
+                    ttl=1800 if year == clock.year else 86400, stale=True, referer="https://www.csindex.com.cn/")
+                rows.extend(r["data"].get("data") or [])
+                sources.append(meta(r))
+            except AppError as exc:
+                errors.append(exc.as_dict())
+            if len(rows) >= count + 10:
+                break
+        bars = []
+        name = code
+        for row in rows:
+            if str(row.get("indexCode")) != code:
+                continue
+            date = date_text(row.get("tradeDate"))
+            if not date:
+                continue
+            day = datetime.strptime(date, "%Y-%m-%d").date()
+            if day.weekday() >= 5 or (day.year in calendar()["years"] and not is_session_day(day)):
+                continue
+            values = {k: number(row.get(k)) for k in ("open", "high", "low", "close")}
+            if any(v is None or v <= 0 for v in values.values()):
+                continue
+            name = row.get("indexNameCn", code)
+            bars.append({**values, "date": date, "volume": number(row.get("tradingVol")), "amount": None})
+        bars = sorted({x["date"]: x for x in bars}.values(), key=lambda x: x["date"])[-count:]
+        if not bars:
+            raise AppError("source_format", "中证官网未返回有效历史数据", {"asset_id": asset_id}, 503)
+        return {"bars": bars, "provider_name": name, "source": "中证指数官网日频序列", "sources": sources, "errors": errors,
+                "asof": bars[-1]["date"], "adjustment": "官方指数原序列",
+                "volume_unit": "tradingVol原单位（未独立核实）", "amount_unit": "未核实，不参与跨源成交额统计"}
 
     def margin(self):
         r = self.http.data("https://datacenter-web.eastmoney.com/api/data/v1/get", params={
@@ -331,9 +385,73 @@ class Eastmoney:
                 sources.append(meta(r))
             except AppError as exc:
                 errors.append(exc.as_dict())
+            still_missing = {k: v for k, v in sz_wanted.items() if v["asset_id"] not in result}
+            if still_missing:
+                try:
+                    r = self.http.get("https://fund.szse.cn/api/report/ShowReport", params={
+                        "SHOWTYPE": "xlsx", "CATALOGID": "1000_lf", "TABKEY": "tab1"}, encoding=None,
+                        referer="https://fund.szse.cn/marketdata/fundslist/index.html", ttl=3600, stale=True)
+                    rows = self.xlsx_rows(r["bytes"])
+                    headers = None
+                    for row in rows:
+                        if "基金代码" in row and any("当前规模" in x for x in row):
+                            headers = row
+                            continue
+                        if not headers:
+                            continue
+                        data = dict(zip(headers, row))
+                        code = str(data.get("基金代码", ""))
+                        shares = next((number(v) for k, v in data.items() if "当前规模" in k), None)
+                        if code in still_missing and shares is not None:
+                            item = still_missing[code]
+                            result[item["asset_id"]] = {**item, "rows": [{"date": None, "shares": shares}],
+                                                       "limitation": "深交所当前规模文件未单列统计日期，保留获取时点，暂不伪造跨日变动",
+                                                       "source": r["source"], "fetched_at": r["fetched_at"]}
+                    sources.append(meta(r))
+                except (AppError, ValueError, KeyError, zipfile.BadZipFile, ET.ParseError) as exc:
+                    errors.append(exc.as_dict() if isinstance(exc, AppError) else {"reason": str(exc)})
         missing = [x["asset_id"] for x in observations if x["asset_id"] not in result]
         for row in result.values():
             row["rows"].sort(key=lambda x: x["date"] or "", reverse=True)
             row["unit"] = "份"
         return {"items": list(result.values()), "missing": missing, "sources": sources, "errors": errors,
                 "definition": "配置的ETF观察篮子，仅用于份额观察；非自动交易映射、非全指数ETF总份额"}
+
+    @staticmethod
+    def xlsx_rows(raw):
+        ns = {"s": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
+        with zipfile.ZipFile(io.BytesIO(raw)) as archive:
+            def xml(name):
+                info = archive.getinfo(name)
+                if info.file_size > 20000000:
+                    raise ValueError("XLSX XML exceeds size limit")
+                text = archive.read(name)
+                if b"<!DOCTYPE" in text or b"<!ENTITY" in text:
+                    raise ValueError("XML entities are not accepted")
+                return ET.fromstring(text)
+            shared = []
+            if "xl/sharedStrings.xml" in archive.namelist():
+                shared = ["".join(si.itertext()) for si in xml("xl/sharedStrings.xml").findall("s:si", ns)]
+            sheet = xml("xl/worksheets/sheet1.xml")
+            rows = []
+            for row in sheet.findall(".//s:sheetData/s:row", ns):
+                values = {}
+                for cell in row.findall("s:c", ns):
+                    col = re.sub(r"\d", "", cell.get("r", "A1"))
+                    index = 0
+                    for char in col:
+                        index = index * 26 + ord(char) - 64
+                    if index < 1 or index > 1024:
+                        raise ValueError("XLSX column limit exceeded")
+                    v = cell.find("s:v", ns)
+                    value = v.text if v is not None else ""
+                    if cell.get("t") == "s" and value:
+                        value = shared[int(value)]
+                    elif cell.get("t") == "inlineStr":
+                        value = "".join(cell.itertext())
+                    values[index - 1] = value or ""
+                if values:
+                    rows.append([values.get(i, "") for i in range(max(values) + 1)])
+                if len(rows) > 100000:
+                    raise ValueError("XLSX row limit exceeded")
+            return rows

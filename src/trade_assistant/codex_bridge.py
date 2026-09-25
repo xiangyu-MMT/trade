@@ -2,6 +2,7 @@ import json
 import os
 import re
 import signal
+import shutil
 import subprocess
 import time
 from pathlib import Path
@@ -46,17 +47,44 @@ def redact(text):
 class CodexBridge:
     def __init__(self, settings):
         self.settings = settings
+        self.process = None
+
+    @staticmethod
+    def command_prefix(command):
+        resolved = shutil.which(command) or command
+        if os.name == "nt" and str(resolved).lower().endswith((".cmd", ".bat")):
+            entry = Path(resolved).parent / "node_modules" / "@openai" / "codex" / "bin" / "codex.js"
+            node = shutil.which("node")
+            if not entry.is_file() or not node:
+                raise AppError("codex_path", "Windows请配置实际Codex可执行文件，或使用标准npm安装的Codex与Node22", status=503)
+            version = subprocess.run([node, "--version"], capture_output=True, text=True, timeout=10).stdout.strip()
+            if not version.startswith("v22."):
+                raise AppError("node_version", "本项目要求Node22.x，当前为" + version, status=503)
+            return [node, str(entry)]
+        return [resolved]
+
+    def cancel(self):
+        process = self.process
+        if process is None or process.poll() is not None:
+            return
+        try:
+            if os.name == "nt":
+                subprocess.run(["taskkill", "/PID", str(process.pid), "/T", "/F"], capture_output=True)
+            else:
+                os.killpg(process.pid, signal.SIGTERM)
+        except OSError:
+            pass
 
     def availability(self):
         config = self.settings.load()["ai"]
         try:
-            result = subprocess.run([config["command"], "login", "status"], capture_output=True,
+            result = subprocess.run(self.command_prefix(config["command"]) + ["login", "status"], capture_output=True,
                                     text=True, encoding="utf-8", errors="replace", timeout=15)
             message = (result.stdout + result.stderr).lower()
             kind = "ChatGPT" if "chatgpt" in message else "API-key" if "api key" in message else "unknown"
             return {"available": result.returncode == 0 and kind == "ChatGPT", "auth_kind": kind,
                     "enabled": config["enabled"]}
-        except (OSError, subprocess.TimeoutExpired):
+        except (OSError, subprocess.TimeoutExpired, AppError):
             return {"available": False, "auth_kind": "not-found", "enabled": config["enabled"]}
 
     def call(self, purpose, payload):
@@ -78,7 +106,7 @@ class CodexBridge:
         prompt = template_path.read_text(encoding="utf-8") + "\n\n以下是本次输入资料JSON：\n" + dumps(payload)
         if len(prompt.encode("utf-8")) > 400000:
             raise AppError("ai_input_size", "本轮推导资料过大，请减少候选或归档正文后重试")
-        command = [cfg["command"], "exec", "--ignore-user-config", "--sandbox", "read-only",
+        command = self.command_prefix(cfg["command"]) + ["exec", "--ignore-user-config", "--sandbox", "read-only",
                    "--skip-git-repo-check", "--ephemeral", "--json", "--color", "never",
                    "--output-schema", str(schema_path), "--output-last-message", str(output_path),
                    "-c", "project_doc_max_bytes=0", "-c", 'web_search="disabled"']
@@ -99,6 +127,7 @@ class CodexBridge:
         process = None
         try:
             process = subprocess.Popen(command, **kwargs)
+            self.process = process
             stdout, stderr = process.communicate(prompt, timeout=cfg["timeout"])
         except subprocess.TimeoutExpired:
             if os.name == "nt":
@@ -115,9 +144,12 @@ class CodexBridge:
             raise AppError("codex_timeout", "Codex 推导超时，本轮资料已保留", {"record": str(run_dir)}, 503)
         except OSError as exc:
             raise AppError("codex_start", "无法启动 Codex", {"reason": str(exc)}, 503) from exc
+        finally:
+            self.process = None
         (run_dir / "stdout.jsonl").write_text(redact(stdout), encoding="utf-8")
         (run_dir / "stderr.log").write_text(redact(stderr), encoding="utf-8")
         trace = {"purpose": purpose, "created_at": now(), "seconds": round(time.monotonic() - start, 2),
+                 "record_id": run_dir.name,
                  "input_hash": digest(payload), "exit_code": process.returncode, "record": str(run_dir),
                  "auth_kind": auth["auth_kind"], "schema": schema_path.name}
         write_json(run_dir / "trace.json", trace)

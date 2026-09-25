@@ -71,7 +71,7 @@ class HttpClient:
                 write_json(cache_path, record)
                 self.log({"source": url, "status": "ok", "fetched_at": fetched,
                           "bytes": len(body), "seconds": round(time.monotonic() - started, 3)})
-                return {"text": body.decode(encoding, "replace"), "source": url,
+                return {("text" if encoding else "bytes"): body.decode(encoding, "replace") if encoding else body, "source": url,
                         "fetched_at": fetched, "cache_stale": False}
             except (urllib.error.URLError, OSError, ValueError) as exc:
                 last = str(exc)
@@ -89,7 +89,8 @@ class HttpClient:
 
     @staticmethod
     def _cached(record, encoding, stale):
-        return {"text": base64.b64decode(record["body"]).decode(encoding, "replace"),
+        body = base64.b64decode(record["body"])
+        return {("text" if encoding else "bytes"): body.decode(encoding, "replace") if encoding else body,
                 "source": record["source"], "fetched_at": record["fetched_at"], "cache_stale": stale}
 
     def data(self, url, **kwargs):
