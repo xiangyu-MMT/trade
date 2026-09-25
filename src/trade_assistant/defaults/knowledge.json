@@ -1,0 +1,212 @@
+[
+  {
+    "id": "logic-dividend",
+    "kind": "logic",
+    "payload": {
+      "title": "红利高股息",
+      "body": "红利的高股息逻辑：股息高就会变得有吸引力。",
+      "layers": [
+        "logic"
+      ],
+      "source": "翔宇于2026-09-25的P03需求原话；REQ-001 R12",
+      "evidence": [],
+      "note": "只归档用户已表达的原则；不代表未提供的量化阈值或市场因果已被验证。"
+    }
+  },
+  {
+    "id": "logic-cycle",
+    "kind": "logic",
+    "payload": {
+      "title": "行业周期反转",
+      "body": "行业周期变化导致股价的反转。",
+      "layers": [
+        "logic"
+      ],
+      "source": "翔宇于2026-09-25的P03需求原话；REQ-001 R12",
+      "evidence": [],
+      "note": "只归档用户已表达的原则；不代表未提供的量化阈值或市场因果已被验证。"
+    }
+  },
+  {
+    "id": "logic-mainline",
+    "kind": "logic",
+    "payload": {
+      "title": "主线趋势",
+      "body": "资金合力让主线板块形成大趋势。",
+      "layers": [
+        "logic"
+      ],
+      "source": "翔宇于2026-09-25的P03需求原话；REQ-001 R12",
+      "evidence": [],
+      "note": "只归档用户已表达的原则；不代表未提供的量化阈值或市场因果已被验证。"
+    }
+  },
+  {
+    "id": "logic-broad",
+    "kind": "logic",
+    "payload": {
+      "title": "宽基流动性与估值修复",
+      "body": "宽基交易流动性和估值修复。",
+      "layers": [
+        "logic"
+      ],
+      "source": "翔宇于2026-09-25的P03需求原话；REQ-001 R12",
+      "evidence": [],
+      "note": "只归档用户已表达的原则；不代表未提供的量化阈值或市场因果已被验证。"
+    }
+  },
+  {
+    "id": "logic-rebound",
+    "kind": "logic",
+    "payload": {
+      "title": "超跌博弈反弹",
+      "body": "大A市场大跌后，超跌后的博弈反弹。",
+      "layers": [
+        "logic"
+      ],
+      "source": "翔宇于2026-09-25的P03需求原话；REQ-001 R12",
+      "evidence": [],
+      "note": "只归档用户已表达的原则；不代表未提供的量化阈值或市场因果已被验证。"
+    }
+  },
+  {
+    "id": "logic-familiar",
+    "kind": "logic",
+    "payload": {
+      "title": "熟悉逻辑与共振原则",
+      "body": "参与熟悉的逻辑；以上五类是目前熟悉的逻辑，可继续扩充。逻辑、技术、模式共振时寻找方向；三层都不好时等待。",
+      "layers": [
+        "logic"
+      ],
+      "source": "翔宇于2026-09-25的P03需求原话；REQ-001 R12",
+      "evidence": [],
+      "note": "只归档用户已表达的原则；不代表未提供的量化阈值或市场因果已被验证。"
+    }
+  },
+  {
+    "id": "technical-system",
+    "kind": "technical",
+    "payload": {
+      "title": "技术与盘面结构",
+      "body": "技术包括均线系统、OBV、MACD、CCI以及全市场盘面结构。均线为5日、20日、60日、120日。逻辑符合时，观察技术是否顺风，是否出现趋势行情。",
+      "layers": [
+        "technical"
+      ],
+      "source": "翔宇于2026-09-25的P03需求原话；REQ-001 R12",
+      "evidence": [],
+      "note": "只归档用户已表达的原则；不代表未提供的量化阈值或市场因果已被验证。"
+    }
+  },
+  {
+    "id": "technical-horizon",
+    "kind": "technical",
+    "payload": {
+      "title": "交易周期与计划纪律",
+      "body": "交易周期几天到几周，日线为主、周线辅助。没有计划就没有交易；计划由系统先拟、翔宇确认，实际交易由翔宇操作并回填。",
+      "layers": [
+        "technical"
+      ],
+      "source": "翔宇于2026-09-25的P03需求原话；REQ-001 R12",
+      "evidence": [],
+      "note": "只归档用户已表达的原则；不代表未提供的量化阈值或市场因果已被验证。"
+    }
+  },
+  {
+    "id": "mode-tech",
+    "kind": "mode",
+    "payload": {
+      "title": "科技吸血单边",
+      "body": "用户列举的模式：科技吸血的单边行情。具体识别条件待结合证据归纳。",
+      "layers": [
+        "mode"
+      ],
+      "source": "翔宇于2026-09-25的P03需求原话；REQ-001 R12",
+      "evidence": [],
+      "note": "只归档用户已表达的原则；不代表未提供的量化阈值或市场因果已被验证。"
+    }
+  },
+  {
+    "id": "mode-expansion",
+    "kind": "mode",
+    "payload": {
+      "title": "增量普涨",
+      "body": "进攻的增量普涨模式下，用户认为趋势跟踪更适配。未提供历史胜率数值。",
+      "layers": [
+        "mode"
+      ],
+      "source": "翔宇于2026-09-25的P03需求原话；REQ-001 R12",
+      "evidence": [],
+      "note": "只归档用户已表达的原则；不代表未提供的量化阈值或市场因果已被验证。"
+    }
+  },
+  {
+    "id": "mode-decline",
+    "kind": "mode",
+    "payload": {
+      "title": "缩量阴跌",
+      "body": "用户列举的模式：缩量阴跌行情。具体识别条件待结合证据归纳。",
+      "layers": [
+        "mode"
+      ],
+      "source": "翔宇于2026-09-25的P03需求原话；REQ-001 R12",
+      "evidence": [],
+      "note": "只归档用户已表达的原则；不代表未提供的量化阈值或市场因果已被验证。"
+    }
+  },
+  {
+    "id": "mode-rotation",
+    "kind": "mode",
+    "payload": {
+      "title": "高切低",
+      "body": "用户列举的模式：市场在高切低。具体识别条件待结合证据归纳。",
+      "layers": [
+        "mode"
+      ],
+      "source": "翔宇于2026-09-25的P03需求原话；REQ-001 R12",
+      "evidence": [],
+      "note": "只归档用户已表达的原则；不代表未提供的量化阈值或市场因果已被验证。"
+    }
+  },
+  {
+    "id": "mode-defense",
+    "kind": "mode",
+    "payload": {
+      "title": "防御",
+      "body": "防御模式下，用户认为红利高股息更适配。未提供历史胜率数值。",
+      "layers": [
+        "mode"
+      ],
+      "source": "翔宇于2026-09-25的P03需求原话；REQ-001 R12",
+      "evidence": [],
+      "note": "只归档用户已表达的原则；不代表未提供的量化阈值或市场因果已被验证。"
+    }
+  },
+  {
+    "id": "mode-attack",
+    "kind": "mode",
+    "payload": {
+      "title": "进攻",
+      "body": "用户列举的模式：市场在进攻。需结合盘面结构与外部环境解读。",
+      "layers": [
+        "mode"
+      ],
+      "source": "翔宇于2026-09-25的P03需求原话；REQ-001 R12",
+      "evidence": [],
+      "note": "只归档用户已表达的原则；不代表未提供的量化阈值或市场因果已被验证。"
+    }
+  },
+  {
+    "id": "mode-rebound",
+    "kind": "mode",
+    "payload": {
+      "title": "超跌反弹",
+      "body": "超跌反弹同时可以是市场模式和交易逻辑，需要分别解释交易出发点与市场状态。",
+      "layers": [
+        "mode"
+      ],
+      "source": "翔宇于2026-09-25的P03需求原话；REQ-001 R12",
+      "evidence": [],
+      "note": "只归档用户已表达的原则；不代表未提供的量化阈值或市场因果已被验证。"
+    }
+  }
+]
