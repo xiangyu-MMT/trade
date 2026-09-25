@@ -303,25 +303,26 @@ class Eastmoney:
     def margin(self):
         r = self.http.data("https://datacenter-web.eastmoney.com/api/data/v1/get", params={
             "reportName": "RPTA_WEB_MARGIN_DAILYTRADE", "columns": "ALL", "sortColumns": "STATISTICS_DATE",
-            "sortTypes": -1, "pageSize": 10, "pageNumber": 1}, ttl=3600, stale=True)
+            "sortTypes": -1, "pageSize": 80, "pageNumber": 1}, ttl=3600, stale=True)
         rows = (r["data"].get("result") or {}).get("data") or []
         result = []
         for row in rows:
-            if number(row.get("FIN_BALANCE")) is not None:
+            if number(row.get("FIN_BALANCE")) is not None and number(row["FIN_BALANCE"]) > 0 and date_text(row.get("STATISTICS_DATE")):
                 result.append({"date": date_text(row["STATISTICS_DATE"]),
                                "financing_balance": number(row["FIN_BALANCE"]) * 1e8,
                                "securities_lending_balance": number(row.get("LOAN_BALANCE")) * 1e8 if number(row.get("LOAN_BALANCE")) is not None else None})
         if not result:
             raise AppError("source_format", "融资余额汇总暂不可得", status=503)
+        result = sorted({x["date"]: x for x in result}.values(), key=lambda x: x["date"], reverse=True)[:60]
         return {"rows": result, "unit": "元（源单位亿元）", "definition": "两融账户统计原发布口径，日频",
                 **meta(r, result[0]["date"])}
 
-    def limit_pool(self, day, which):
+    def limit_pool(self, day, which, historical=False):
         route = {"up": "getTopicZTPool", "broken": "getTopicZBPool", "down": "getTopicDTPool"}[which]
         r = self.http.data("https://push2ex.eastmoney.com/" + route, params={
             "ut": "7eea3edcaed734bea9cbfc24409ed989", "dpt": "wz.ztzt", "Pageindex": 0,
             "pagesize": 10000, "sort": "fbt:asc" if which != "down" else "fund:asc",
-            "date": day.replace("-", "")}, referer="https://quote.eastmoney.com/")
+            "date": day.replace("-", "")}, referer="https://quote.eastmoney.com/", ttl=86400 if historical else 0, stale=historical)
         d = r["data"].get("data")
         if not isinstance(d, dict) or not isinstance(d.get("pool"), list):
             raise AppError("source_format", "涨跌停股池未返回所需日期数据", {"day": day, "kind": which}, 503)
@@ -330,7 +331,47 @@ class Eastmoney:
         total = int(d.get("tc", len(rows)))
         return {"rows": [x for x in rows if eligible(x)], "complete": len(rows) == total,
                 "total_reported": total, "definition": "提供方涨停/炸板池排除部分连续一字新股；非完整交易所涨停统计",
-                **meta(r, date_text(d.get("qdate", day)))}
+                "quote_date": date_text(d.get("qdate")), "requested_date": day,
+                "date_basis": "公开股池接口date参数；qdate保留为报价最新交易日，不作为历史归属日",
+                **meta(r, day)}
+
+    def limit_history(self, asof, count=25):
+        day = datetime.strptime(asof[:10], "%Y-%m-%d").date()
+        dates = []
+        while len(dates) < count:
+            if is_session_day(day):
+                dates.append(day.isoformat())
+            day -= timedelta(days=1)
+        rows, errors = {}, []
+        def read(date):
+            values, sources, failures = {}, [], []
+            for kind in ("up", "down"):
+                try:
+                    p = self.limit_pool(date, kind, historical=True)
+                    values[kind] = len(p["rows"]) if p["complete"] else None
+                    sources.append({k: p.get(k) for k in ("source", "fetched_at", "asof", "quote_date", "requested_date", "date_basis")})
+                except AppError as exc:
+                    values[kind] = None
+                    failures.append({"date": date, "kind": kind, "reason": str(exc)})
+            if values.get("up") == values.get("down") == 0:
+                values = {"up": None, "down": None}
+                failures.append({"date": date, "reason": "两池均为空，无法核实是无涨跌停还是历史超出可得范围"})
+            return {"date": date, **values, "sources": sources}, failures
+        with concurrent.futures.ThreadPoolExecutor(max_workers=3) as pool:
+            tasks = {pool.submit(read, date): date for date in dates}
+            for future in concurrent.futures.as_completed(tasks):
+                try:
+                    row, failure = future.result()
+                    rows[row["date"]] = row
+                    errors.extend(failure)
+                except (AppError, ValueError, KeyError) as exc:
+                    rows[tasks[future]] = {"date": tasks[future], "up": None, "down": None}
+                    errors.append({"date": tasks[future], "reason": str(exc)})
+        output = sorted(rows.values(), key=lambda x: x["date"])
+        covered = sum(x.get("up") is not None and x.get("down") is not None for x in output)
+        return {"rows": output, "covered": covered, "expected": len(dates), "complete": covered == len(dates),
+                "errors": errors, "unit": "家", "source": "东方财富按date查询的历史股池",
+                "definition": "沪深非ST过滤后的提供方涨跌停股池；保留来源的新股等排除，历史缺口不补0"}
 
     def etf_shares(self, observations, day):
         wanted = {x["asset_id"][2:]: x for x in observations if x["asset_id"].startswith("sh")}

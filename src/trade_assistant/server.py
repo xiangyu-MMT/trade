@@ -14,7 +14,7 @@ from .plans import Plans
 from .report import render
 from .runner import Runner
 from .presentation import select
-from .charts import candles, turnover
+from .charts import candles, dashboard_charts
 from .util import AppError, dumps
 
 WEB = Path(__file__).parent / "web"
@@ -56,8 +56,7 @@ class App:
         if run.get("facts"):
             result["presentation"] = select(result["facts"], run.get("analysis"))
             result["charts"] = {x["asset_id"]: {p: candles(x["technical"], p) for p in ("daily", "weekly")} for x in result["facts"]["candidates"]}
-            mv = result["facts"].get("market_volume") or {}
-            result["market_charts"] = {key: turnover((mv.get(key) or {}).get("rows", [])) for key in ("exact", "reference")}
+            result["market_charts"] = dashboard_charts(result["facts"])
         for ref in (run.get("analysis") or {}).get("knowledge_refs", []):
             try:
                 result["knowledge_used"].append(self.store.get_ref(ref))

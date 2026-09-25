@@ -37,18 +37,36 @@ class Engine:
                                "volume_price": item.get("volume_price"),
                                "technical_asof": tech.get("asof"), "trend_facts": tech.get("trend_facts", []),
                                "weekly": week[-8:], "status": tech["status"], "missing": tech.get("reasons", [])})
-        industry_brief = [{k: row.get(k) for k in ("asset_id", "name", "change_pct", "net_flow", "flow_source", "filters_complete")} for row in facts["industries"]]
+        selected_industries = {x["asset_id"] for x in candidates if x["kind"] == "industry"}
+        industry_brief = [{k: row.get(k) for k in ("asset_id", "name", "change_pct", "net_flow")} for row in facts["industries"] if row["asset_id"] in selected_industries]
         # Candidate technical fields already occur above. Keep the stable evidence
         # key and provenance without sending every indicator twice to the model.
         candidate_evidence = {x["evidence_id"]: x["asset_id"] for x in candidates}
         evidence = {}
         for key, value in facts["evidence"].items():
             if key in candidate_evidence:
-                evidence[key] = {k: v for k, v in value.items() if k not in ("latest", "trend_facts")}
+                evidence[key] = {k: v for k, v in value.items() if k not in ("latest", "trend_facts", "volume_price")}
                 evidence[key]["details_in_candidate"] = candidate_evidence[key]
+            elif key == "market:volume":
+                series = value.get("series") or value.get("reference") or value.get("exact") or {}
+                evidence[key] = {"asof": series.get("asof"), "summary": series.get("summary"),
+                                 "previous_ratio": series.get("previous_ratio"), "mean5_ratio": series.get("mean5_ratio"),
+                                 "mean20_ratio": series.get("mean20_ratio"), "notes": value.get("notes", []),
+                                 "rows": [{"date": r["date"], "amount": r["amount"]} for r in series.get("rows", [])]}
+            elif key.startswith("basis:"):
+                evidence[key] = {k: value.get(k) for k in ("name", "asof", "unit", "covered", "expected", "definition")}
+                evidence[key]["rows"] = [{"date": r["date"], "value": r["value"]} for r in value.get("rows", [])]
+            elif key == "market:limits_history":
+                evidence[key] = {"definition": value.get("definition"), "covered": value.get("covered"),
+                                 "rows": [{k: r.get(k) for k in ("date", "up", "down")} for r in value.get("rows", [])]}
+            elif key == "margin:balance":
+                evidence[key] = {k: v for k, v in value.items() if k not in ("rows", "source")}
+                evidence[key]["rows"] = [{"date": r["date"], "financing_balance": r["financing_balance"]} for r in value.get("rows", [])]
+            elif key in ("market:breadth", "industry:ranking", "data:coverage"):
+                evidence[key] = {"details_in": {"market:breadth": "market", "industry:ranking": "industry_ranking", "data:coverage": "coverage"}[key]}
             else:
                 evidence[key] = value
-        return {"run_id": run_id, "asof": facts["asof"], "requested_at": now(),
+        payload = {"run_id": run_id, "asof": facts["asof"], "requested_at": now(),
                 "ranking_eligible_ids": eligible_ids(facts),
                 "market_calendar": facts.get("calendar"),
                 "candidates": candidates, "market": facts["market"], "industry_ranking": facts["industry_ranking"],
@@ -57,6 +75,17 @@ class Engine:
                 "confirmed_knowledge": self.knowledge.context(),
                 "requirements": {"holding_period": "几天到几周", "primary_period": "日线", "secondary_period": "周线",
                                  "industry_definition": "同花顺", "orders_allowed": False}}
+        payload["input_scope"] = {"industry_details": len(industry_brief), "candidate_count": len(candidates),
+                                  "policy": "基础成交额排行榜由程序筛选，AI只接收选定行业详情；全市场盘面只接收汇总事实"}
+        def compact(value):
+            if isinstance(value, float):
+                return round(value, 6)
+            if isinstance(value, dict):
+                return {k: compact(v) for k, v in value.items()}
+            if isinstance(value, list):
+                return [compact(v) for v in value]
+            return value
+        return compact(payload)
 
     @staticmethod
     def validate_analysis(result, payload):

@@ -5,6 +5,7 @@ from .http_client import HttpClient
 from .providers.eastmoney import Eastmoney, eligible
 from .providers.macro import Macro
 from .providers.market_volume import MarketVolume
+from .providers.basis import WeightedBasis
 from .volume_price import previous_day
 from .providers.ths import Ths
 from .util import AppError, CN, new_id, now
@@ -56,47 +57,23 @@ class Collector:
                 "asof": None, "errors": [], "sources": []}
             summaries = self.safe("industry_flow", summaries_future.result) or {"items": {}, "errors": []}
 
-        self.progress("成份口径", "核对同花顺成份与沪深非ST成交额")
-        members = self.parallel(list(industry_names), self.ths.members, "行业成份")
-        stocks_by_code = {s["code"]: s for s in market["stocks"]}
         industries = []
         for code, name in industry_names.items():
             quote = industry_quotes.get(code)
             summary = summaries["items"].get(code, {})
-            member = members.get(code) or {"codes": [], "complete": False, "sources": [], "errors": []}
-            allowed_codes = [c for c in member["codes"] if c.startswith(("00", "30", "60", "68"))]
-            missing = [c for c in allowed_codes if c not in stocks_by_code]
-            valid = [stocks_by_code[c] for c in allowed_codes if c in stocks_by_code and eligible(stocks_by_code[c])]
-            filter_complete = member["complete"] and market["complete"] and not missing and bool(valid)
-            if any(s["amount"] is None for s in valid):
-                filter_complete = False
-            q_dates = {s["asof"][:10] for s in valid if s.get("asof")}
-            if quote and (len(q_dates) != 1 or quote["asof"][:10] not in q_dates or any(not s.get("asof") for s in valid)):
-                filter_complete = False
-            industries.append({
-                "asset_id": "ths:" + code, "code": code, "name": name,
-                "quote": quote, "published_amount": quote.get("amount") if quote else None,
-                "filtered_amount": sum(s["amount"] or 0 for s in valid) if filter_complete else None,
-                "filters_complete": filter_complete, "member_count": len(member["codes"]),
-                "eligible_member_count": len(valid), "membership_complete": member["complete"],
-                "missing_members": missing, "membership_sources": member["sources"],
-                "change_pct": summary.get("change_pct"), "net_flow": summary.get("net_flow"),
-                "flow_source": {k: summary.get(k) for k in ("source", "asof", "fetched_at", "flow_definition")},
-            })
-        filtered = bool(industries) and all(x["filters_complete"] for x in industries)
-        key = "filtered_amount" if filtered else "published_amount"
-        ready = [i for i in industries if i[key] is not None and i.get("quote")]
+            industries.append({"asset_id": "ths:" + code, "code": code, "name": name,
+                               "quote": quote, "published_amount": quote.get("amount") if quote else None,
+                               "change_pct": summary.get("change_pct"), "net_flow": summary.get("net_flow"),
+                               "flow_source": {k: summary.get(k) for k in ("source", "asof", "fetched_at", "flow_definition")}})
+        ready = [i for i in industries if i["published_amount"] is not None and i.get("quote")]
         dates = {x["quote"]["asof"][:10] for x in ready}
         rank_complete = len(ready) == len(industry_names) and len(dates) == 1
-        ranked = sorted(ready, key=lambda row: (-row[key], row["asset_id"]))
-        rank_basis = "同花顺成份 + 沪深非ST成交额汇总" if filtered else "同花顺行业公布成交额（未统一剔除ST/范围外成份）"
-        ranking = {"complete": rank_complete, "filters_complete": filtered, "basis": rank_basis,
+        ranked = sorted(ready, key=lambda row: (-row["published_amount"], row["asset_id"]))
+        rank_basis = "同花顺公布行业成交额"
+        ranking = {"complete": rank_complete, "basis": rank_basis,
                    "date": next(iter(dates)) if len(dates) == 1 else None,
                    "covered": len(ready), "expected": len(industry_names),
-                   "top": [{"asset_id": x["asset_id"], "name": x["name"], "amount": x[key]} for x in ranked[:self.config["top_n"]]]}
-        if not filtered:
-            self.gaps.append({"group": "industry_filter", "code": "scope_gap",
-                              "message": "行业原指数/资金口径与沪深非ST股票统计不同；成份尚未全部核齐，排名明确使用同花顺原公布口径"})
+                   "top": [{"asset_id": x["asset_id"], "name": x["name"], "amount": x["published_amount"]} for x in ranked[:self.config["top_n"]]]}
         if not rank_complete:
             self.gaps.append({"group": "industry_ranking", "code": "incomplete",
                               "message": "行业目录或同日成交额未齐，动态前10暂不加入候选"})
@@ -124,7 +101,13 @@ class Collector:
             for item in self.config[field]:
                 add(dict(item, kind=kind), "配置指定")
         candidates = list(selected.values())
+        selected_industries = {x["asset_id"] for x in candidates if x["kind"] == "industry"}
+        industries = [x for x in industries if x["asset_id"] in selected_industries]
+        selected_flows = sum(x.get("net_flow") is not None for x in industries)
         extra = {x["asset_id"]: dict(x, kind="index") for x in self.config["watch_indices"]}
+        for aid, name in (("sh000300", "沪深300"), ("sh000852", "中证1000")):
+            if aid not in selected:
+                extra.setdefault(aid, {"asset_id": aid, "name": name, "kind": "index", "role": "basis_spot"})
         for source, target in self.config["execution_mappings"].items():
             extra[target["asset_id"]] = dict(target, kind="etf", role="user_execution_mapping")
         instruments = {**extra, **selected}
@@ -154,7 +137,10 @@ class Collector:
             latest = [h["asof"] for h in histories.values() if h]
             market_day = max(latest) if latest else datetime.now(CN).strftime("%Y-%m-%d")
         self.progress("补充数据", "融资、ETF份额、涨跌停与跨市场观察")
+        closed_day = previous_day(market_day) if market_day == datetime.now(CN).strftime("%Y-%m-%d") and datetime.now(CN).hour < 15 else market_day
         supplements = {
+            "basis": lambda: WeightedBasis(self.http).history(closed_day, histories),
+            "limits_history": lambda: self.em.limit_history(closed_day),
             "market_turnover": lambda: MarketVolume(self.http).history(previous_day(market_day) if market_day == datetime.now(CN).strftime("%Y-%m-%d") and datetime.now(CN).hour < 15 else market_day),
             "margin": self.em.margin,
             "etf_shares": lambda: self.em.etf_shares(self.config["etf_observations"], market_day),
@@ -174,7 +160,7 @@ class Collector:
             {"group": "同花顺行业行情与排名", "status": "ok" if rank_complete else "partial", "detail": "%s/%s；%s" % (len(ready), len(industry_names), rank_basis)},
             {"group": "全市场数据目录", "status": "ok" if market["complete"] else "partial", "detail": "%s/%s；统计使用沪深非ST证券，源目录可能包含待排除项" % (market["received"], market["total_reported"])},
             {"group": "候选/观察历史", "status": "ok" if len(valid_histories) == len(instruments) else "partial", "detail": "%s/%s" % (len(valid_histories), len(instruments))},
-            {"group": "行业资金", "status": "ok" if len(summaries["items"]) == len(industry_names) else "partial", "detail": "%s/%s，同花顺原发布口径，源时间精度未单列" % (len(summaries["items"]), len(industry_names))},
+            {"group": "行业资金", "status": "ok" if selected_flows == len(industries) else "partial", "detail": "%s/%s，同花顺原发布口径，源时间精度未单列" % (selected_flows, len(industries))},
         ]
         for key, value in supplements.items():
             status = "ok" if value else "missing"
@@ -192,5 +178,6 @@ class Collector:
                 "macro": [v for k, v in supplements.items() if (k.startswith("macro:") or k == "tips") and v],
                 "margin": supplements.get("margin"), "etf_shares": supplements.get("etf_shares"),
                 "market_turnover": supplements.get("market_turnover"),
+                "basis": supplements.get("basis"), "limit_history": supplements.get("limits_history"),
                 "limit_pools": {key: supplements.get("limits_" + key) for key in ("up", "down", "broken")},
                 "coverage": coverage, "gaps": self.gaps, "attempts": self.http.attempts}

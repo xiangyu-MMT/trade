@@ -4,7 +4,7 @@ from .indicators import FORMULA_VERSION, calculate
 from .market_time import session_info
 from .providers.eastmoney import eligible
 from .util import AppError, now
-from .volume_price import volume_price, turnover_summary, completed_asof
+from .volume_price import volume_price, turnover_summary, completed_asof, previous_day
 
 
 def compute(snapshot, config=None, market_history=None):
@@ -40,6 +40,7 @@ def compute(snapshot, config=None, market_history=None):
 
     market = snapshot.get("market") or {}
     eligible_rows = [x for x in market.get("stocks", []) if eligible(x)]
+    amount_rows = [x for x in market.get("stocks", []) if str(x.get("asset_id", "")).startswith(("sh60", "sh68", "sz00", "sz30"))]
     ups = downs = flats = unknown = 0
     changes = []
     for stock in eligible_rows:
@@ -55,21 +56,22 @@ def compute(snapshot, config=None, market_history=None):
         else:
             flats += 1
     complete = bool(market.get("complete")) and not unknown
-    amount_missing = sum(x.get("amount") is None for x in eligible_rows)
-    volume_missing = sum(x.get("volume") is None for x in eligible_rows)
+    amount_missing = sum(x.get("amount") is None for x in amount_rows)
+    volume_missing = sum(x.get("volume") is None for x in amount_rows)
     mf = {"eligible_count": len(eligible_rows), "directory_count": market.get("received", 0),
           "directory_reported": market.get("total_reported"), "directory_complete": bool(market.get("complete")),
           "advancing": ups, "declining": downs, "unchanged": flats, "unknown_prices": unknown,
           "counts_complete": complete, "asof": market.get("asof"),
           "advance_ratio": ups / len(eligible_rows) if complete and eligible_rows else None,
-          "amount": sum(x.get("amount") or 0 for x in eligible_rows),
+          "amount": sum(x.get("amount") or 0 for x in amount_rows),
+          "amount_scope": "shsz_a", "amount_count": len(amount_rows), "amount_source": "沪深A股快照累计成交额",
           "amount_complete": bool(market.get("complete")) and not amount_missing,
-          "volume": sum(x.get("volume") or 0 for x in eligible_rows),
+          "volume": sum(x.get("volume") or 0 for x in amount_rows),
           "volume_complete": bool(market.get("complete")) and not volume_missing,
           "median_change_pct": statistics.median(changes) if changes and complete else None,
           "excluded_count": len(market.get("stocks", [])) - len(eligible_rows),
           "undated_prices": sum(not x.get("asof") for x in eligible_rows),
-          "definition": "来源A股目录中沪深非ST证券；北交所/B股及名称含ST证券剔除，缺报价单列"}
+          "definition": "涨跌家数按沪深非ST统计，缺报价单列；成交额与成交量采用沪深A股全范围"}
     pools = snapshot.get("limit_pools") or {}
     for key in ("up", "down", "broken"):
         pool = pools.get(key)
@@ -87,9 +89,11 @@ def compute(snapshot, config=None, market_history=None):
     margin = snapshot.get("margin")
     margin_fact = None
     if margin and margin.get("rows"):
-        rows = margin["rows"]
+        rows = sorted({x["date"]: x for x in margin["rows"] if x.get("date")}.values(), key=lambda x: x["date"], reverse=True)
+        adjacent = len(rows) > 1 and rows[1]["date"] == previous_day(rows[0]["date"])
         margin_fact = {"latest": rows[0], "previous": rows[1] if len(rows) > 1 else None,
-                       "change": rows[0]["financing_balance"] - rows[1]["financing_balance"] if len(rows) > 1 and rows[0]["date"] != rows[1]["date"] else None,
+                       "rows": list(reversed(rows)), "previous_session_matched": adjacent,
+                       "change": rows[0]["financing_balance"] - rows[1]["financing_balance"] if adjacent else None,
                        "unit": "元", "asof": margin["asof"], "source": margin["source"], "definition": margin["definition"]}
         evidence["margin:balance"] = margin_fact
     etfs = []
@@ -111,21 +115,31 @@ def compute(snapshot, config=None, market_history=None):
     evidence["data:coverage"] = {"coverage": snapshot.get("coverage", []), "asof": snapshot.get("asof")}
     market_calendar = session_info(snapshot.get("asof"))
     evidence["market:calendar"] = market_calendar
-    exact_rows = {x["date"]: x for x in (market_history or []) if x["date"] <= str(snapshot.get("asof", ""))[:10]}
+    exact_rows = {x["date"]: x for x in (market_history or []) if x["date"] <= str(snapshot.get("asof", ""))[:10] and x.get("scope_id") == "shsz_a"}
     if mf["amount_complete"] and mf["counts_complete"] and not mf["undated_prices"] and completed_asof(mf["asof"]):
         exact_rows[str(mf["asof"])[:10]] = {"date": str(mf["asof"])[:10], "amount": mf["amount"], "source": "本地实际完整收盘快照"}
-    exact_turnover = {**turnover_summary(list(exact_rows.values())), "scope": "沪深非ST，逐日实际来源目录", "scope_id": "shsz_non_st", "unit": "元"}
+    exact_turnover = {**turnover_summary(list(exact_rows.values())), "scope": "沪深A股完整收盘快照", "scope_id": "shsz_a", "unit": "元"}
     exchange = snapshot.get("market_turnover") or {}
     exchange_turnover = {**exchange, **turnover_summary(exchange.get("rows", []))}
-    market_volume = {"exact": exact_turnover, "reference": exchange_turnover,
+    same_day = next((x for x in exchange.get("rows", []) if x["date"] == snapshot.get("asof")), None)
+    if same_day and completed_asof(mf["asof"]):
+        mf.update(amount=same_day["amount"], amount_complete=True, amount_source="交易所公布沪深A股成交额")
+    market_volume = {"series": exchange_turnover if exchange_turnover["rows"] else exact_turnover,
                      "current_asof": mf["asof"], "current_amount": mf["amount"], "current_complete": mf["amount_complete"],
-                     "notes": ["全市场量能独立于候选集合", "交易所历史含ST，与严格过滤快照分开呈现；不能拼接计算", "盘中累计成交額不直接与完整日总量比较"]}
+                     "notes": ["全市场量能独立于候选集合", "盘中累计成交额不直接与完整日总量比较"]}
     evidence["market:volume"] = market_volume
+    limit_history = snapshot.get("limit_history") or {"rows": [], "complete": False, "covered": 0}
+    evidence["market:limits_history"] = limit_history
+    basis = snapshot.get("basis") or {}
+    for prefix in ("IF", "IM"):
+        if prefix in basis:
+            evidence["basis:" + prefix] = basis[prefix]
     return {"schema_version": 1, "snapshot_id": snapshot["id"], "created_at": now(),
             "asof": snapshot.get("asof"), "formula_version": FORMULA_VERSION, "calendar": market_calendar,
             "candidates": candidate_facts, "watch_indices": watches,
             "market": mf, "industries": snapshot.get("industries", []),
             "market_volume": market_volume,
+            "limit_history": limit_history, "basis": basis,
             "industry_ranking": snapshot.get("industry_ranking"), "margin": margin_fact,
             "etf_shares": etfs, "macro": macro, "evidence": evidence,
             "coverage": snapshot.get("coverage", []), "gaps": snapshot.get("gaps", []),

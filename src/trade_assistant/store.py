@@ -259,9 +259,9 @@ class Store:
         with self.connection() as conn:
             for value in conn.execute("SELECT facts FROM runs WHERE facts IS NOT NULL ORDER BY created_at DESC LIMIT 180"):
                 market = (json.loads(value[0]) or {}).get("market", {})
-                if market.get("amount_complete") and market.get("counts_complete") and not market.get("undated_prices") and completed_asof(market.get("asof")):
+                if market.get("amount_scope") == "shsz_a" and market.get("amount_complete") and market.get("counts_complete") and not market.get("undated_prices") and completed_asof(market.get("asof")):
                     date = market["asof"][:10]
-                    rows.setdefault(date, {"date": date, "amount": market["amount"], "source": "本地实际完整收盘快照"})
+                    rows.setdefault(date, {"date": date, "amount": market["amount"], "source": "本地实际完整收盘快照", "scope_id": "shsz_a"})
         return sorted(rows.values(), key=lambda x: x["date"])[-60:]
 
     def create_job(self, kind):

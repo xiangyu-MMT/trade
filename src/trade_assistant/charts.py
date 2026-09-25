@@ -1,5 +1,6 @@
 """Small self-contained SVG charts, shared by page and report."""
 from html import escape
+import math
 
 from .indicators import sma
 
@@ -71,3 +72,55 @@ def turnover(rows):
         shapes.append('<rect x="%.1f" y="%.1f" width="%.1f" height="%.1f" rx="2" fill="%s"><title>%s：%s元</title></rect>' % (55 + i * step, 150 - value / max_value * 120, max(3, step * .65), value / max_value * 120, color, escape(item["date"]), fmt(value)))
     shapes.append('<text x="5" y="20" fill="#667e70" font-size="11">%s元</text><text x="55" y="172" fill="#667e70" font-size="11">%s → %s</text>' % (fmt(max_value), escape(rows[0]["date"]), escape(rows[-1]["date"])))
     return '<svg viewBox="0 0 640 182" role="img" aria-label="完整交易日成交额历史">' + ''.join(shapes) + '</svg>'
+
+
+def curves(rows, series, unit="", zero=False):
+    """series=[(field,label,color)]; missing values create visible line breaks."""
+    values = [r.get(field) for r in rows for field, _, _ in series if isinstance(r.get(field), (int, float))]
+    if not rows or not values:
+        return '<p class="muted small">暂无可核实的历史数据。</p>'
+    valid_positions = [i for i, row in enumerate(rows) if any(isinstance(row.get(field), (int, float)) for field, _, _ in series)]
+    rows = rows[valid_positions[0]:valid_positions[-1] + 1]
+    lo, hi = min(values), max(values)
+    if zero:
+        lo, hi = min(lo, 0), max(hi, 0)
+    span = hi - lo or abs(hi) * .01 or 1
+    lo, hi = lo - span * .12, hi + span * .12
+    if unit == "家":
+        lo, hi = 0, max(10, math.ceil(hi / 10) * 10)
+    x = lambda i: 64 + i * 546 / max(1, len(rows) - 1)
+    y = lambda v: 167 - (v - lo) / (hi - lo) * 135
+    shapes = []
+    for t in (0, .5, 1):
+        v = lo + (hi - lo) * t
+        label = str(round(v)) if unit == "家" else fmt(v)
+        shapes.append('<path d="M62 %.1fH614" stroke="#e5ece5"/><text x="57" y="%.1f" text-anchor="end" fill="#758775" font-size="10">%s</text>' % (y(v), y(v) + 3, label))
+    if zero and lo <= 0 <= hi:
+        shapes.append('<path d="M62 %.1fH614" stroke="#8b9d90" stroke-dasharray="4 4"/><text x="615" y="%.1f" fill="#708371" font-size="10">0</text>' % (y(0), y(0) + 3))
+    for field, label, color in series:
+        path, connected, points = [], False, []
+        for i, row in enumerate(rows):
+            value = row.get(field)
+            if not isinstance(value, (int, float)):
+                connected = False
+                continue
+            path.append(("L" if connected else "M") + "%.1f %.1f" % (x(i), y(value)))
+            connected = True
+            points.append('<circle cx="%.1f" cy="%.1f" r="2.8" fill="%s"><title>%s %s：%s%s</title></circle>' % (x(i), y(value), color, escape(row["date"]), escape(label), fmt(value), escape(unit)))
+        shapes.append('<path d="%s" fill="none" stroke="%s" stroke-width="2"/>' % (" ".join(path), color))
+        shapes.extend(points)
+    shapes.append('<text x="63" y="195" fill="#768773" font-size="10">%s</text><text x="542" y="195" fill="#768773" font-size="10">%s</text>' % (escape(rows[0]["date"]), escape(rows[-1]["date"])))
+    return '<svg viewBox="0 0 640 208" role="img" aria-label="' + escape("、".join(s[1] for s in series)) + '历史曲线">' + ''.join(shapes) + '</svg>'
+
+
+def dashboard_charts(facts):
+    mv = facts.get("market_volume") or {}
+    volume = mv.get("series") or mv.get("reference") or mv.get("exact") or {}
+    margin = facts.get("margin") or {}
+    limits = facts.get("limit_history") or {}
+    basis = facts.get("basis") or {}
+    return {"turnover": turnover(volume.get("rows", [])),
+            "margin": curves(margin.get("rows", []), [("financing_balance", "融资余额", "#3d789c")], "元"),
+            "limits": curves(limits.get("rows", []), [("up", "涨停", "#ba5f50"), ("down", "跌停", "#358772")], "家", True),
+            "basisIF": curves((basis.get("IF") or {}).get("rows", []), [("value", "沪深300加权基差", "#4e849f")], "点", True),
+            "basisIM": curves((basis.get("IM") or {}).get("rows", []), [("value", "中证1000加权基差", "#7d80ab")], "点", True)}

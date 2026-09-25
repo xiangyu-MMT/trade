@@ -55,6 +55,6 @@ class MarketVolume:
             errors.append({"reason": "深圳不同日期返回相同金额，历史日期有效性不足"})
             rows = []
         return {"rows": sorted(rows, key=lambda x: x["date"]), "expected": len(dates), "complete": len(rows) == len(dates),
-                "errors": errors, "unit": "元", "scope": "沪深A股（含ST），排除B股/北交所/基金/回购；交易所原发布范围",
+                "errors": errors, "unit": "元", "scope": "沪深A股，排除B股/北交所/基金/回购；交易所原发布范围",
                 "scope_id": "sse_szse_a_including_st", "source": "上交所每日股票情况 + 深交所证券类别统计",
-                "limitations": ["此历史含ST，不与沪深非ST快照拼接", "深圳日期以查询参数为依据，下载表未单列日期"]}
+                "limitations": ["深圳日期以查询参数为依据，下载表未单列日期"]}

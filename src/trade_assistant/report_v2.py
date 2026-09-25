@@ -1,6 +1,6 @@
 from html import escape
 
-from .charts import candles, turnover, fmt
+from .charts import candles, turnover, fmt, dashboard_charts
 from .presentation import select
 from .util import now
 
@@ -36,10 +36,11 @@ def render(run):
               ("盘面结构", m.get("structure") or "本轮未生成结构解读。"),
               ("市场模式", m.get("mode_summary") or m.get("state") or "模式依据待补充。")]
     mv = facts.get("market_volume") or {}
-    exact, ref = mv.get("exact", {}), mv.get("reference", {})
-    use_exact = len(exact.get("rows", [])) >= 5 or not ref.get("rows")
-    vol = exact if use_exact else ref
-    scope = "沪深非ST实际完整收盘记录" if use_exact else "沪深A股含ST参考 · 与严格过滤统计分开"
+    vol = mv.get("series") or mv.get("reference") or mv.get("exact") or {}
+    plots = dashboard_charts(facts)
+    margin = facts.get("margin") or {}
+    delta = margin.get("change")
+    delta_text = ("+" if delta > 0 else "") + fmt(delta) + "元" if delta is not None else "前日资料不足"
     parts = ['<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>trade · 量价分析报告</title><style>', STYLE,
              '</style></head><body><main><p class="muted">P03 / TRADE · 量价优先 · 人工交易</p><h1>', escape(m.get("state") or "程序量价事实"),
              '</h1><p class="muted">数据截至 ', escape(str(facts.get("asof", "未知"))), ' · 生成 ', escape(str(run.get("finished_at") or run.get("created_at"))),
@@ -50,11 +51,22 @@ def render(run):
     for title, text in blocks:
         parts.extend(['<article class="card"><h3>', title, '</h3><p>', escape(text), '</p></article>'])
     parts.extend(['</div><div class="stats"><div>上涨 / 下跌<b>', str(market.get("advancing", "—")), ' / ', str(market.get("declining", "—")),
-                  '</b></div><div>沪深非ST成交额<b>', fmt(market.get("amount")), '</b></div><div>可排序候选<b>', str(selection["eligible_count"]),
-                  ' / ', str(selection["analyzed_count"]), '</b></div></div><section class="card volume"><h3>全市场量能</h3><p class="muted">',
-                  escape(scope), '</p>', turnover(vol.get("rows", [])), '<p class="insight">', escape(vol.get("summary", "量能历史不足")),
-                  '</p><p class="muted">严格非ST历史积累 ', str(len(exact.get("rows", []))),
-                  ' 日；不同范围序列不拼接。盘中累计量不直接与完整日相除。</p></section><h2>候选重点 · 最强三项</h2><p class="muted">',
+                  '</b></div><div>市场成交额<b>', fmt(market.get("amount")), '</b></div><div>融资余额日变动<b>', escape(delta_text),
+                  '</b></div></div><section class="card volume"><h3>市场成交额</h3><p class="muted">完整交易日走势</p>',
+                  turnover(vol.get("rows", [])), '<p class="insight">', escape(vol.get("summary", "量能历史不足")),
+                  '</p><p class="muted">盘中累计量不直接与完整日相除。</p></section>'])
+    parts.extend(['<h2>资金、基差与市场情绪</h2><div class="grid"><section class="card"><h3>融资余额</h3><p>',
+                  fmt((margin.get("latest") or {}).get("financing_balance")), '元 · ', escape(margin.get("asof") or "待发布"),
+                  '</p>', plots["margin"], '<p class="insight">较前一交易日 ', escape(delta_text),
+                  '</p></section><section class="card"><h3>涨停与跌停数量</h3>', plots["limits"],
+                  '<p class="muted">红：涨停 · 绿：跌停。股池历史缺口断线显示。</p></section>'])
+    for prefix, title in (("IF", "沪深300加权基差"), ("IM", "中证1000加权基差")):
+        b = (facts.get("basis") or {}).get(prefix) or {}
+        valid = [x for x in b.get("rows", []) if x.get("value") is not None]
+        latest = valid[-1]["value"] if valid else None
+        parts.extend(['<section class="card"><div class="title"><h3>', title, '</h3><span>', fmt(latest), '点</span></div>',
+                      plots["basis" + prefix], '<p class="muted">持仓量加权 · 正数升水，负数贴水 · 截至 ', escape(b.get("asof") or "待取得"), '</p></section>'])
+    parts.extend(['</div><h2>候选重点 · 最强三项</h2><p class="muted">',
                   escape(selection["label"]), '。相对强弱不表示已经适合交易。</p><div class="three">',
                   ''.join(card(ident) for ident in selection["overall_top3"]), '</div><p class="ma">K线 · MA5 / MA20 / MA60 / MA120 淡色参考 · 下方为同时间轴成交量</p>'])
     for group in selection["groups"]:
