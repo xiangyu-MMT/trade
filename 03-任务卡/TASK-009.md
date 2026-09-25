@@ -1,6 +1,6 @@
 # TASK-009 · 小图独立切换与MA5/20
 
-- **修订 / 状态**：T1 / doing；2026-09-25。
+- **修订 / 状态**：T1 / review；2026-09-25，实现已交付。
 - **依据**：REQ-004 R1、全池分析A4；既有连续迭代授权。
 - **范围**：每卡独立日/周切换、移除全局切换；两条日均线贯穿配置、指标、量价排序、知识与图例/报告。不做交易权限、历史覆盖或正式测试。
 
@@ -16,11 +16,20 @@
 
 ## 完成说明（Codex）
 
-实现后登记提交及主路径自检。测试用例、正式测试与验收交小步。
+- **实现提交**：`52fcbb30af846a8dc1a6b68a2b3cffd04a01cde2`，源代码先提交，本节随后登记。
+- **实现**：15张候选小图各自有日/周按钮；状态按对象保存，点击仅替换本卡，不重新取数/调用AI。图表、配置、新计算、排序及报告只用5日/20日日均线，周图按周K结束日取样。
+- **知识**：technical-system@1保留；根据翔宇本轮明确原话形成已确认@2，未改其他正文及历史引用。迁移仅作用于未被用户修订的原始确认版。
+- **Chrome实际主路径**：首次15卡均日线、15组局部按钮、无全局选择器；点击第一卡后第一卡为周线、第二卡仍日线；两卡均只有MA5/20两条SVG均线。分析请求0次，未捕获脚本异常。截图`.scratch/p03-i4-selfcheck/independent-periods.png`已查看。
+- **命令**：`python3 -m compileall -q projects/P03-trade/src`、`node --check projects/P03-trade/src/trade_assistant/web/app.js`、`git diff --check`均无错误；另用已有真实快照重放新计算及Codex解读。
+- **真实重放**：`caffeinate -i python3 projects/P03-trade/src/trade.py run --snapshot .scratch/p03-i4-selfcheck/snapshot.json`；轮次97fdd97eeba74873beae7e0c834600fe，19:47:37–19:51:38，Codex240.8秒、22/22成功、error=null，知识引用technical-system@2。标记saved_snapshot，不宣称重新取数。
+- **原始追踪**：`.local/ai/e64202fd074941388d662555ce3679c0/`；输入哈希adb582aa85fcd14425217d5930d24bd80f204944b2a0b19f8b3e3ceada2d0da5，输出哈希238aa9986de548184348133df2b35a5f4f0d7c20429d5f932df7c04fadf6b269。
+- **正式服务**：已启动最终代码，API确认配置[5,20]、计算只有5/20、知识@2，active=null且定时关闭。
+- **交付**：[I4说明](../outputs/codex-迭代交付-I4.html)、[两线量价报告](../outputs/codex-两线量价报告-I4.html)，已在Chrome打开。源日期与原免费数据缺口保留。
+- **责任边界**：以上为Mac启动/主路径自检，不是正式测试；Windows未实机验证。测试用例、正式测试及独立验收交小步。
 
 ## 翔宇实现签字
 
-待交付实际提交，不预填通过。
+待翔宇确认52fcbb30af846a8dc1a6b68a2b3cffd04a01cde2及I4交付，不预填通过。
 
 ## 测试与验收（小步）
 
