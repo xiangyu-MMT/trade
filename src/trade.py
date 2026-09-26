@@ -20,6 +20,7 @@ def main():
     calculate.add_argument("--input", required=True)
     calculate.add_argument("--output")
     sub.add_parser("status", help="查看本地档案和运行状态")
+    sub.add_parser("setup", help="在项目本地目录安装盈利解析依赖")
     analyze = sub.add_parser("analyze", help="用已确认档案与已有事实调用 Codex")
     analyze.add_argument("--input", required=True)
     analyze.add_argument("--output")
@@ -36,6 +37,12 @@ def main():
     args = parser.parse_args()
     try:
         settings = Settings(args.home)
+        if args.command in ("setup", "serve") or (args.command in ("collect", "run") and not getattr(args, "snapshot", None) and (args.market or settings.load()["active_market"]) == "US"):
+            from trade_assistant.dependencies import ensure
+            ensure()
+        if args.command == "setup":
+            print(dumps({"ready": True, "parsers": ["xlrd", "pypdf"]}))
+            return 0
         if args.command == "collect":
             from trade_assistant.collector import Collector
             if (args.market or settings.load()["active_market"]) == "US":

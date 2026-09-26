@@ -4,7 +4,7 @@
 
 ## 启动
 
-需要 Python 3.8+；程序使用 Python 标准库，无需安装第三方 Python 依赖。AI 使用当前可用的 Codex CLI 配置，不限定认证类别；也可在页面配置 DeepSeek API。若以 npm 安装 Codex，按工作区约束使用 Node 22.x。
+需要 Python 3.8+；盈利资料解析使用 xlrd 2.0.2 和 pypdf 5.9.0，启动时会把缺少的依赖安装到项目 `.local/python-packages/`，不改系统 Python。AI 使用当前可用的 Codex CLI 配置，不限定认证类别；也可在页面配置 DeepSeek API。若以 npm 安装 Codex，按工作区约束使用 Node 22.x。
 
 - Mac：双击项目根的 `启动交易助手.command`。
 - Windows：双击 `启动交易助手.cmd`，需要可用的 Python 与 Codex。Windows 尚未在本机实测，应由小步在实际设备完成正式验证。
@@ -167,3 +167,12 @@ python3 projects/P03-trade/src/trade.py collect --market US --output us-snapshot
 `GET /api/state?market=US`、`GET /api/runs?market=US`按市场查询；`POST /api/run`正文带`market`。三指数固定配对使用`/api/us/pairings`、`/preview`、`/bind`；绑定需要当前预览、目标代码、原版本和明确确认，行业不支持境内配对。
 
 实现自检环境是Mac/Python3.8/Node22/Google Chrome；浏览器自检工具安装在隔离`.scratch/`，不是应用运行依赖。Windows及真实DeepSeek调用若未执行，应按实际交付记录注明。正式测试由小步完成。
+
+## I7 · 市场按钮与盈利自动来源
+
+- 左侧使用“A股 / 美股”两个按钮，选中项高亮；切换更新地址和浏览器偏好，只读取该市场存档，不触发新分析。
+- EPS自动读取[Shiller当前站](https://shillerdata.com/)公开xls中的名义E列，采用季度末TTM（四季度合计）；剔除月内插值，不把Real Earnings或CAPE当作EPS。来源未提供逐季发布日期时保留空值。
+- 净利润率自动读取[FactSet Earnings Insight](https://insight.factset.com/topic/earnings/page/1)公开PDF正文中明确的历史季度比较值，保留报告页码、发布日期和修订版本。当前季度预测单列，不并入历史实际曲线。此口径与Shiller EPS不同，不能直接用两者反推收入。
+- 首次读取最近报告及4个历史季度报告，原文件与解析结果缓存；数据会在后续“更新分析”时自动获取，旧轮次保持原状。
+- 首次启动会补齐解析依赖；也可提前运行 `python3 projects/P03-trade/src/trade.py setup`。Mac/Windows沿用原入口，依赖版本在 `src/requirements.txt`。
+- 本节更新I6中EPS/净利润率“仍缺自动来源”的说明。实际违约、可靠IOPV与广度历史的其余限制继续以当前轮次显示为准。

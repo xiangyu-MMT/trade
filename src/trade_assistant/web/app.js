@@ -12,13 +12,28 @@ let selectedMarket = 'CN';
 try { selectedMarket = localStorage.getItem('p03.market') === 'US' ? 'US' : 'CN'; } catch (_) {}
 const linkedMarket=new URLSearchParams(location.search).get('market');
 if(['CN','US'].includes(linkedMarket))selectedMarket=linkedMarket;
-$('#market-select').value = selectedMarket;
+paintMarketSwitch();
 const chartPeriods = Object.create(null);
 const chartMaChoices = Object.create(null);
 const maColors = {5:'#b5ac86',20:'#94b4cd',60:'#b39fc3',120:'#9fbfac'};
 let aiInfo = null;
 let followLatest = true, stateSignature = '', editorSubmit = null, activeJob = null, loading = false, knowledgeFilter = 'all';
 const watchedJobs = new Set();
+
+function paintMarketSwitch() {
+  document.querySelectorAll('[data-action="switch-market"]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.market===selectedMarket)));
+}
+async function switchMarket(value) {
+  if(!['CN','US'].includes(value)||value===selectedMarket)return;
+  selectedMarket=value;
+  try{localStorage.setItem('p03.market',value);}catch(_){}
+  const url=new URL(location.href);url.searchParams.set('market',value);history.replaceState(null,'',url);
+  paintMarketSwitch();currentRun=null;followLatest=true;stateSignature='';
+  state={knowledge:[],confirmed_knowledge:[],plans:[],confirmed_plans:[],executions:[],reviews:[],runs:[],trash:[]};
+  render();
+  while(loading)await new Promise(resolve=>setTimeout(resolve,50));
+  await loadState(true);
+}
 
 async function api(path, method='GET', data=null) {
   const options = {method, headers:{'X-P03-Token':token}};
@@ -335,6 +350,7 @@ function executionForm(ref='') {
 }
 
 async function action(target) {
+  if(target.dataset.action==='switch-market'){await switchMarket(target.dataset.market);return;}
   if(await usAction(target))return;
   if(target.dataset.action==='card-period'){
     const id=target.dataset.id,period=target.dataset.period,item=factItem(id);
@@ -409,13 +425,6 @@ document.addEventListener('click',async event=>{
 document.addEventListener('change',async event=>{
   const target=event.target;
   try{
-    if(target.id==='market-select'){
-      selectedMarket=target.value;try{localStorage.setItem('p03.market',selectedMarket);}catch(_){}
-      currentRun=null;followLatest=true;stateSignature='';state={knowledge:[],confirmed_knowledge:[],plans:[],confirmed_plans:[],executions:[],reviews:[],runs:[],trash:[]};
-      render();
-      while(loading)await new Promise(resolve=>setTimeout(resolve,50));
-      await loadState(true);return;
-    }
     if(target.dataset.maId){
       const id=target.dataset.maId,p=Number(target.dataset.maPeriod),item=factItem(id);if(!item||![5,20,60,120].includes(p))return;
       const selected=new Set(displayMAs(id));target.checked?selected.add(p):selected.delete(p);chartMaChoices[id]=[...selected].sort((a,b)=>a-b);

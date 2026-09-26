@@ -9,6 +9,7 @@ from .ths import Tables
 from .macro import Macro
 from .us_market import USMarket, metadata
 from ..util import AppError, number, now
+from .us_earnings import USEarnings
 
 DEFINITIONS = {
     "WALCL": ("联储总资产", "百万美元", "周三", "H.4.1总资产，周三时点，非周均值"),
@@ -142,6 +143,8 @@ class USMacro:
         output = self.attempt("FRED公共序列", self.fred) or {}
         # Independent official fallbacks; preserve their actual, often shorter histories.
         jobs = {}
+        earnings = USEarnings(self.http)
+        jobs["标普盈利自动获取"] = earnings.collect
         if not all(x in output for x in ("WALCL", "WDTGAL")):
             jobs["联储H.4.1"] = self.h41
         if not all(x in output for x in ("DGS10", "T10Y2Y")):
@@ -163,13 +166,15 @@ class USMacro:
             futures = [(name, pool.submit(fn)) for name, fn in jobs.items()]
             for name, future in futures:
                 try:
-                    output.update(future.result())
+                    obtained = future.result()
+                    if not obtained:
+                        raise AppError("source_unavailable", name + "没有返回有效指标")
+                    output.update(obtained)
                     self.coverage.append({"group": name, "status": "ok", "detail": "已取得免费替代资料，按源观测日展示"})
                 except (AppError, ValueError, TypeError, KeyError) as exc:
                     self.coverage.append({"group": name, "status": "missing", "detail": str(exc)})
-        # The public S&P workbook is an actual attempted source, not assumed accessible.
-        for name, url in (("标普实际盈利资料", "https://www.spglobal.com/spdji/en/documents/additional-material/sp-500-eps-est.xlsx"),
-                          ("企业实际违约资料", "https://www.spglobal.com/ratings/en/research/credit-market-research")):
+        self.coverage.extend(earnings.coverage)
+        for name, url in (("企业实际违约资料", "https://www.spglobal.com/ratings/en/research/credit-market-research"),):
             try:
                 response = self.http.get(url, ttl=86400, stale=True, encoding=None)
                 detail = "公开资料已访问，但未取得可验证的结构化实际序列；请从配置补充带来源、样本与发布日期的观测"
@@ -198,7 +203,7 @@ class USMacro:
             original = output["GDPC1"]
             mapping = {x["date"]: x["value"] for x in original["rows"]}
             points = [{"date": d, "value": (v / mapping[str(int(d[:4])-1)+d[4:]] - 1) * 100} for d, v in sorted(mapping.items()) if str(int(d[:4])-1)+d[4:] in mapping and mapping[str(int(d[:4])-1)+d[4:]] > 0]
-            output["GDP_YOY"] = {**original, "symbol": "GDP_YOY", "name": "实际GDP同比", "unit": "%", "rows": points, "definition": "实际GDP同季度上年同比；非环比折年率"}
+            output["GDP_YOY"] = {**original, "symbol": "GDP_YOY", "name": "实际GDP同比", "unit": "%", "rows": points, "value": points[-1]["value"] if points else None, "definition": "实际GDP同季度上年同比；非环比折年率"}
         if output.get("SP500_EPS"):
             actual = [x for x in output["SP500_EPS"]["rows"] if x.get("value_type") == "actual"]
             groups = {}
@@ -211,7 +216,7 @@ class USMacro:
                 point = date.fromisoformat(row["date"])
                 q = (point.year, (point.month - 1) // 3 + 1)
                 old = groups.setdefault(key, {}).get(q)
-                if not old or row["published_at"] > old["published_at"]:
+                if not old or str(row.get("published_at") or "") > str(old.get("published_at") or ""):
                     groups[key][q] = row
             derived = []
             for key, quarters in groups.items():
@@ -222,7 +227,8 @@ class USMacro:
                                         "definition": "同样本、同定义、同期间类型的已报告EPS同比；基期EPS须正数", "component_sources": [row["source"], previous["source"]]})
             if derived:
                 original = output["SP500_EPS"]
-                output["SP500_EPS_YOY"] = {**original, "symbol": "SP500_EPS_YOY", "name": "标普500实际EPS同比", "unit": "%", "rows": sorted(derived, key=lambda x: (x["date"], x["published_at"])), "asof": max(x["date"] for x in derived),
+                derived.sort(key=lambda x: (x["date"], str(x.get("published_at") or "")))
+                output["SP500_EPS_YOY"] = {**original, "symbol": "SP500_EPS_YOY", "name": "标普500实际EPS同比", "unit": "%", "rows": derived, "value": derived[-1]["value"], "asof": max(x["date"] for x in derived),
                                           "definition": "实际已报告EPS同比；严格同样本、定义和期间类型，基期非正不生成百分比"}
         return {"series": list(output.values()), "coverage": self.coverage}
 
