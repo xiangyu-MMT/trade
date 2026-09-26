@@ -1,0 +1,19 @@
+{
+  "indices": [
+    {"asset_id":"us:DJI","name":"道琼斯工业平均","symbol":"^DJI","kind":"index","volume_symbol":"DIA","identity":"Dow Jones Industrial Average"},
+    {"asset_id":"us:NDX","name":"纳斯达克100","symbol":"^NDX","kind":"index","volume_symbol":"QQQ","identity":"NASDAQ 100"},
+    {"asset_id":"us:SPX","name":"标普500","symbol":"^GSPC","kind":"index","volume_symbol":"SPY","identity":"S&P 500"}
+  ],
+  "sectors": [
+    {"asset_id":"us-sector:financials","name":"金融","symbol":"XLF","kind":"industry","identity":"Financial Select Sector SPDR，大型金融股代理","identity_source":"https://www.ssga.com/us/en/individual/etfs/the-financial-select-sector-spdr-fund-xlf"},
+    {"asset_id":"us-sector:healthcare","name":"医疗保健","symbol":"XLV","kind":"industry","identity":"Health Care Select Sector SPDR，大型医疗保健股代理","identity_source":"https://www.ssga.com/us/en/individual/etfs/the-health-care-select-sector-spdr-fund-xlv"},
+    {"asset_id":"us-sector:staples","name":"必选消费","symbol":"XLP","kind":"industry","identity":"Consumer Staples Select Sector SPDR，大型必选消费股代理","identity_source":"https://www.ssga.com/us/en/individual/etfs/the-consumer-staples-select-sector-spdr-fund-xlp"},
+    {"asset_id":"us-sector:discretionary","name":"可选消费","symbol":"XLY","kind":"industry","identity":"Consumer Discretionary Select Sector SPDR，大型可选消费股代理","identity_source":"https://www.ssga.com/us/en/individual/etfs/the-consumer-discretionary-select-sector-spdr-fund-xly"},
+    {"asset_id":"us-sector:semiconductors","name":"半导体","symbol":"SOXX","kind":"industry","identity":"iShares Semiconductor，美国上市半导体股票代理，可含海外发行人","identity_source":"https://www.ishares.com/us/products/239705/ishares-phlx-semiconductor-etf"},
+    {"asset_id":"us-sector:software","name":"软件及IT服务","symbol":"XSW","kind":"industry","identity":"S&P Software & Services，软件/IT咨询及服务，含互动家庭娱乐；修正等权代理","identity_source":"https://www.ssga.com/us/en/institutional/etfs/state-street-spdr-sp-software-services-etf-xsw"},
+    {"asset_id":"us-sector:industrials","name":"工业","symbol":"XLI","kind":"industry","identity":"Industrial Select Sector SPDR，大型工业股代理","identity_source":"https://www.ssga.com/us/en/individual/etfs/the-industrial-select-sector-spdr-fund-xli"}
+  ],
+  "technical":{"ma_periods":[20,60],"volume_periods":[5,20],"obv_lookback":20},
+  "observations":[],
+  "breadth_history":[]
+}

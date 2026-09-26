@@ -15,6 +15,7 @@ def main():
     sub = parser.add_subparsers(dest="command", required=True)
     collect = sub.add_parser("collect", help="获取真实免费行情快照")
     collect.add_argument("--output", help="将快照写入指定 JSON 文件")
+    collect.add_argument("--market", choices=("CN", "US"), default=None)
     calculate = sub.add_parser("compute", help="由已有真实快照计算指标与全市场事实")
     calculate.add_argument("--input", required=True)
     calculate.add_argument("--output")
@@ -25,6 +26,7 @@ def main():
     run = sub.add_parser("run", help="执行并保存完整分析轮次")
     run.add_argument("--snapshot", help="使用已保存真实快照，保留原始数据日期")
     run.add_argument("--no-ai", action="store_true", help="仅生成程序事实，并明确标记AI未执行")
+    run.add_argument("--market", choices=("CN", "US"), default=None)
     serve = sub.add_parser("serve", help="启动本地HTML交互系统")
     serve.add_argument("--port", type=int, default=8765)
     serve.add_argument("--no-browser", action="store_true")
@@ -36,7 +38,10 @@ def main():
         settings = Settings(args.home)
         if args.command == "collect":
             from trade_assistant.collector import Collector
-            result = Collector(settings, lambda stage, detail: print(stage + "：" + detail, file=sys.stderr, flush=True)).collect()
+            if (args.market or settings.load()["active_market"]) == "US":
+                from trade_assistant.us_collector import USCollector as Collector
+            with InstanceLock(settings.home):
+                result = Collector(settings, lambda stage, detail: print(stage + "：" + detail, file=sys.stderr, flush=True)).collect()
             if args.output:
                 write_json(args.output, result)
                 print(dumps({"snapshot_id": result["id"], "asof": result["asof"], "candidates": len(result["candidates"]),
@@ -72,7 +77,7 @@ def main():
             else:
                 snapshot = json.loads(Path(args.snapshot).read_text(encoding="utf-8")) if args.snapshot else None
                 with InstanceLock(settings.home):
-                    result = engine.run(lambda stage, detail: print(stage + "：" + detail, file=sys.stderr, flush=True), snapshot, args.no_ai)
+                    result = engine.run(lambda stage, detail: print(stage + "：" + detail, file=sys.stderr, flush=True), snapshot, args.no_ai, market=args.market)
                 print(dumps({k: result[k] for k in ("id", "status", "created_at", "finished_at", "error", "metadata")}, True))
         elif args.command == "serve":
             from trade_assistant.server import serve

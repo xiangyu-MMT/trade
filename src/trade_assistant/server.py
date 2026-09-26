@@ -3,9 +3,11 @@ import secrets
 import sqlite3
 import sys
 import threading
+from datetime import datetime, timezone
+from types import SimpleNamespace
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import unquote, urlsplit
+from urllib.parse import unquote, urlsplit, parse_qs
 
 from . import __version__
 from .config import validate
@@ -16,6 +18,7 @@ from .runner import Runner
 from .presentation import select
 from .charts import candles, dashboard_charts
 from .util import AppError, dumps
+from .markets import market, run_market
 
 WEB = Path(__file__).parent / "web"
 
@@ -32,22 +35,33 @@ class App:
         self.store.mark_interrupted()
         self.runner = Runner(settings, self.store, self.engine.cancel, self.engine.cancelled.clear)
         self.token = secrets.token_hex(32)
+        self.pairing_previews = {}
         self.runner.start_scheduler(lambda: self.run("timer"))
 
-    def run(self, trigger):
-        run = self.engine.run(self.runner.progress, trigger=trigger)
-        return {"run_id": run["id"], "status": run["status"], "error": run.get("error")}
+    def run(self, trigger, selected=None):
+        cfg = self.settings.load()
+        markets = cfg["scheduled_markets"] if trigger == "timer" else [market(selected or cfg["active_market"])]
+        results = []
+        for selected in markets:
+            if results and self.engine.cancelled.is_set():
+                break
+            def progress(stage, detail):
+                self.runner.progress(("美股" if selected == "US" else "A股") + " · " + stage, detail)
+            run = self.engine.run(progress, trigger=trigger, market=selected)
+            results.append({"run_id": run["id"], "market": selected, "status": run["status"], "error": run.get("error")})
+        return {**results[-1], "runs": results}
 
-    def state(self):
-        runs = self.store.list_runs()
+    def state(self, selected=None):
+        selected = market(selected or self.settings.load()["active_market"])
+        runs = self.store.list_runs(analysis_market=selected)
         latest = next((x["id"] for x in runs if x["status"] in ("completed", "partial")), None)
-        return {"version": __version__, **self.runner.status(), "runs": runs, "latest_report_id": latest,
-                "knowledge": self.knowledge.list(), "confirmed_knowledge": self.knowledge.list(True),
-                "plans": self.store.list_objects("plan"), "confirmed_plans": self.store.list_objects("plan", confirmed=True),
-                "executions": self.store.list_objects("execution")[:200],
-                "trash": [x for x in self.store.list_objects(include_deleted=True) if x["is_deleted"]],
+        return {"version": __version__, "analysis_market": selected, "scheduled_markets": self.settings.load()["scheduled_markets"], **self.runner.status(), "runs": runs, "latest_report_id": latest,
+                "knowledge": self.knowledge.list(analysis_market=selected), "confirmed_knowledge": self.knowledge.list(True, selected),
+                "plans": self.store.list_objects("plan", analysis_market=selected), "confirmed_plans": self.store.list_objects("plan", confirmed=True, analysis_market=selected),
+                "executions": self.store.list_objects("execution", analysis_market=selected)[:200],
+                "trash": [x for x in self.store.list_objects(include_deleted=True, analysis_market=selected) if x["is_deleted"]],
                 "lifecycle": self.store.lifecycle(),
-                "reviews": self.store.list_objects("review")[:100], "config_path": str(self.settings.path)}
+                "reviews": self.store.list_objects("review", analysis_market=selected)[:100], "config_path": str(self.settings.path)}
 
     def run_view(self, ident):
         run = self.store.get_run(ident)
@@ -62,6 +76,9 @@ class App:
                 result["knowledge_used"].append(self.store.get_ref(ref))
             except AppError:
                 result["knowledge_used"].append({"ref": ref, "payload": {"title": "引用条目暂不可读取"}})
+        if (result.get("facts") or {}).get("analysis_market") == "US":
+            from .us_report import chart_data
+            result["market_charts"] = chart_data(result["facts"])
         return result
 
     def report(self, ident):
@@ -103,6 +120,7 @@ class App:
             raise AppError("not_found", "分析建议不存在", status=404)
         item = items[index]
         return self.knowledge.create(item["kind"], {"title": item["title"], "body": item["body"],
+                                                   "analysis_market": run_market(run), "market_scope": [run_market(run)],
                                                    "layers": [item["kind"]], "source": "AI分析建议，待确认",
                                                    "run_id": run["id"], "evidence": item["evidence_refs"]})
 
@@ -190,16 +208,18 @@ def handler_for(app):
             if not self.valid_host():
                 raise AppError("forbidden", "只允许本机访问", status=403)
             path = unquote(urlsplit(self.path).path)
+            query = parse_qs(urlsplit(self.path).query)
+            selected = market(query.get("market", ["CN"])[0])
             if path in ("/", "/index.html"):
                 text = (WEB / "index.html").read_text(encoding="utf-8").replace("__P03_TOKEN__", app.token)
                 self.send(text, mime="text/html; charset=utf-8")
-            elif path in ("/app.js", "/style.css"):
+            elif path in ("/app.js", "/us.js", "/style.css"):
                 mime = "text/javascript; charset=utf-8" if path.endswith(".js") else "text/css; charset=utf-8"
                 self.send((WEB / path[1:]).read_bytes(), mime=mime)
             elif path == "/favicon.ico":
                 self.send(b"", 204, mime="image/x-icon")
             elif path == "/api/state":
-                self.json(app.state())
+                self.json(app.state(selected))
             elif path == "/api/status":
                 self.json(app.runner.status())
             elif path == "/api/config":
@@ -212,7 +232,14 @@ def handler_for(app):
             elif path == "/api/ai":
                 self.json({"config": app.settings.load()["ai"], **app.engine.bridge.credentials.status()})
             elif path == "/api/runs":
-                self.json(app.store.list_runs())
+                self.json(app.store.list_runs(analysis_market=selected))
+            elif path == "/api/us/pairings":
+                self.json({"pairings": app.store.list_objects("pairing", analysis_market="US")})
+            elif path.startswith("/api/us/pairings/previews/"):
+                ident = path.split("/")[-1]
+                if ident not in app.pairing_previews:
+                    raise AppError("not_found", "筛选预览已失效，请重新获取", status=404)
+                self.json(app.pairing_previews[ident])
             elif path.startswith("/api/runs/"):
                 parts = path.split("/")
                 if len(parts) == 5 and parts[4] == "report":
@@ -224,17 +251,17 @@ def handler_for(app):
             elif path.startswith("/api/jobs/"):
                 self.json(app.store.get_job(path.split("/")[-1]))
             elif path == "/api/knowledge":
-                self.json(app.knowledge.list())
+                self.json(app.knowledge.list(analysis_market=selected))
             elif path.startswith("/api/knowledge/") and path.endswith("/versions"):
                 self.json(app.store.versions(path.split("/")[-2]))
             elif path == "/api/plans":
-                self.json(app.store.list_objects("plan"))
+                self.json(app.store.list_objects("plan", analysis_market=selected))
             elif path.startswith("/api/plans/") and path.endswith("/versions"):
                 self.json(app.store.versions(path.split("/")[-2]))
             elif path == "/api/executions":
-                self.json(app.store.list_objects("execution"))
+                self.json(app.store.list_objects("execution", analysis_market=selected))
             elif path == "/api/trash":
-                self.json([x for x in app.store.list_objects(include_deleted=True) if x["is_deleted"]])
+                self.json([x for x in app.store.list_objects(include_deleted=True, analysis_market=selected) if x["is_deleted"]])
             elif path == "/api/export":
                 if not app.runner.operation_lock.acquire(False):
                     raise AppError("busy", "请在当前任务结束后导出完整资料", status=409)
@@ -258,7 +285,39 @@ def handler_for(app):
             path = unquote(urlsplit(self.path).path)
             if path == "/api/run":
                 app.settings.load()
-                self.json(app.runner.start("analysis", lambda: app.run("manual")), 202)
+                selected = market(body.get("market", app.settings.load()["active_market"]))
+                self.json(app.runner.start("analysis", lambda: app.run("manual", selected)), 202)
+            elif path == "/api/us/pairings/preview":
+                from .http_client import HttpClient
+                from .etf_pairing import ETFPairing
+                index = body.get("index_id")
+                def preview():
+                    cfg = app.settings.load()["network"]
+                    app.runner.progress("ETF筛选", "核实跟踪标的与同20日成交金额，当前配对保持不变")
+                    client = HttpClient(app.settings.home, cfg["timeout"], cfg["budget_seconds"])
+                    app.engine.collector = SimpleNamespace(http=client)
+                    try:
+                        result = ETFPairing(client, app.store).preview(index)
+                        if app.engine.cancelled.is_set():
+                            raise AppError("cancelled", "筛选已停止，未变更配对", status=409)
+                    finally:
+                        app.engine.collector = None
+                    app.pairing_previews[result["id"]] = result
+                    return {"preview_id": result["id"]}
+                self.json(app.runner.start("pairing", preview), 202)
+            elif path == "/api/us/pairings/bind":
+                from .etf_pairing import ETFPairing
+                preview = app.pairing_previews.get(body.get("preview_id"))
+                if not preview or body.get("confirmed") is not True:
+                    raise AppError("validation_error", "绑定需要有效预览与明确确认")
+                if (datetime.now(timezone.utc) - datetime.fromisoformat(preview["created_at"])).total_seconds() > 900:
+                    raise AppError("preview_expired", "筛选预览超过15分钟，请重新读取后确认", status=409)
+                if not app.runner.operation_lock.acquire(False):
+                    raise AppError("busy", "请在当前任务结束后变更配对", status=409)
+                try:
+                    self.json(ETFPairing(None, app.store).bind(preview, body.get("asset_id"), body.get("expected_revision")), 201)
+                finally:
+                    app.runner.operation_lock.release()
             elif path == "/api/cancel":
                 app.engine.cancel()
                 self.json({"requested": True})

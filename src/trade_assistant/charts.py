@@ -22,6 +22,10 @@ def fmt(value):
 
 def candles(technical, period="daily", count=65, display_ma=(20,)):
     source = technical.get("weekly" if period == "weekly" else "bars", [])
+    proxy = technical.get("volume_proxy")
+    if proxy:
+        volume_map = {b["date"]: b.get("volume") for b in proxy.get("weekly" if period == "weekly" else "bars", [])}
+        source = [dict(b, volume=volume_map.get(b["date"])) for b in source]
     if len(source) < 2:
         return '<p class="muted small">暂无足够的真实K线资料</p>'
     daily = technical.get("bars", [])
@@ -62,7 +66,8 @@ def candles(technical, period="daily", count=65, display_ma=(20,)):
         shapes.append('</g>')
     shapes.append('<path d="M52 181H620M52 239H620" stroke="#dce6de"/><text x="5" y="199" fill="#7b8b80" font-size="10">成交量</text>')
     shapes.append('<text x="53" y="259" fill="#7b8b80" font-size="10">%s</text><text x="546" y="259" fill="#7b8b80" font-size="10">%s</text>' % (escape(bars[0]["date"]), escape(bars[-1]["date"])))
-    return '<svg viewBox="0 0 640 270" role="img" aria-label="%sK线、均线与成交量">%s</svg>' % ("周" if period == "weekly" else "日", "".join(shapes))
+    note = '<p class="muted small">量柱：%s 美国ETF成交量代理</p>' % escape(proxy["symbol"]) if proxy else ''
+    return '<svg viewBox="0 0 640 270" role="img" aria-label="%sK线、均线与成交量">%s</svg>' % ("周" if period == "weekly" else "日", "".join(shapes)) + note
 
 
 def turnover(rows):

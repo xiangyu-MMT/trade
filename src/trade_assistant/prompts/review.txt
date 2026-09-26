@@ -4,3 +4,5 @@
 不要编造未记录的成交、盈亏、手续费、收益率或原因。不能因为一次盈利就认定规则正确，也不能因为一次亏损就断定未按计划执行。
 summary简明概述，plan_review、execution_review、outcome_review分别说明可核实内容；不能判断的事项列入uncertainties。
 knowledge_proposals仅提出值得后续确认的档案草稿，不能称为已确认规则；无实质证据时返回空数组。建议的evidence_refs仅引用输入evidence中的键。
+
+analysis_market与execution_market分开：美股方向通过境内ETF执行仍属于美股复盘。只有输入包含对应价格、净值基准和时间才能讨论溢价影响；不能把境内ETF量能当美股全市场量能。建议保持原分析市场的适用边界，不能自动推广到A股。

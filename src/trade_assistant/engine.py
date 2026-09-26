@@ -7,6 +7,7 @@ from .knowledge import Knowledge
 from .presentation import eligible_ids
 from .store import Store
 from .util import AppError, digest, now
+from .markets import market as validate_market
 
 
 class Engine:
@@ -26,6 +27,7 @@ class Engine:
         self.bridge.cancel()
 
     def analysis_input(self, facts, run_id=None):
+        selected_market = validate_market(facts.get("analysis_market", "CN"))
         candidates = []
         for item in facts["candidates"]:
             tech = item["technical"]
@@ -35,6 +37,7 @@ class Engine:
                                "excluded": item.get("excluded", False), "evidence_id": item["evidence_id"],
                                "quote": item.get("quote"), "technical_latest": tech.get("latest"),
                                "volume_price": item.get("volume_price"),
+                               "price_structure": item.get("price_structure"),
                                "technical_asof": tech.get("asof"), "trend_facts": tech.get("trend_facts", []),
                                "weekly": week[-8:], "status": tech["status"], "missing": tech.get("reasons", [])})
         selected_industries = {x["asset_id"] for x in candidates if x["kind"] == "industry"}
@@ -72,11 +75,19 @@ class Engine:
                 "candidates": candidates, "market": facts["market"], "industry_ranking": facts["industry_ranking"],
                 "industry_structure": industry_brief, "evidence": evidence,
                 "coverage": facts["coverage"], "limitations": facts["limitations"],
-                "confirmed_knowledge": self.knowledge.context(),
+                "confirmed_knowledge": self.knowledge.context(selected_market),
                 "requirements": {"holding_period": "几天到几周", "primary_period": "日线", "secondary_period": "周线",
                                  "industry_definition": "同花顺", "moving_averages_days": [5, 20], "orders_allowed": False}}
         payload["input_scope"] = {"industry_details": len(industry_brief), "candidate_count": len(candidates),
                                   "policy": "基础成交额排行榜由程序筛选，AI只接收选定行业详情；全市场盘面只接收汇总事实"}
+        payload["analysis_market"] = selected_market
+        if selected_market == "US":
+            payload["market"] = {k: v for k, v in facts["market"].items() if k not in ("rows", "sources")}
+            payload["requirements"].update(industry_definition="选定七个美国行业的已标注美国ETF观察代理", moving_averages_days=facts["parameters"]["ma_periods"],
+                                            technical_parameters=facts["parameters"], market_framework="短期流动性；中期信用/期限利差/实际及名义利率/美元；长期实际盈利和增长")
+            payload["input_scope"]["policy"] = "仅所选美国指数和行业、NYSE＋NASDAQ聚合广度及宏观摘要；不把A股体系自动套用，不发送全市场个股明细"
+            payload["us_context"] = {"breadth_history": facts.get("breadth", {}).get("rows", [])[-24:],
+                                     "paired_etfs": [{"index_id": key, "asset_id": value["asset_id"], "pairing_ref": value["pairing_ref"], "premium": value["premium"]} for key, value in facts.get("paired_etfs", {}).items()]}
         def compact(value):
             if isinstance(value, float):
                 return round(value, 6)
@@ -129,20 +140,28 @@ class Engine:
         reply["knowledge_refs"] = [x["ref"] for x in payload["confirmed_knowledge"]]
         return reply
 
-    def run(self, progress=None, snapshot=None, no_ai=False, trigger="manual"):
+    def run(self, progress=None, snapshot=None, no_ai=False, trigger="manual", market=None):
         progress = progress or (lambda stage, detail: None)
+        selected = validate_market(market or ((snapshot or {}).get("analysis_market", "CN") if snapshot else self.settings.load().get("active_market", "CN")))
+        if snapshot and validate_market(snapshot.get("analysis_market", "CN")) != selected:
+            raise AppError("market_mismatch", "快照所属市场与运行目标不同")
         input_mode = "saved_snapshot" if snapshot else "live"
-        ident = self.store.create_run(metadata={"trigger": trigger, "input_mode": input_mode})
+        context = {"trigger": trigger, "input_mode": input_mode, "analysis_market": selected}
+        ident = self.store.create_run(metadata=context)
         self.cancelled.clear()
         try:
             if snapshot is None:
-                self.collector = Collector(self.settings, progress)
+                if selected == "US":
+                    from .us_collector import USCollector
+                    self.collector = USCollector(self.settings, progress, self.store, self.cancelled)
+                else:
+                    self.collector = Collector(self.settings, progress)
                 snapshot = self.collector.collect()
                 self.collector = None
             self.store.update_run(ident, snapshot=snapshot)
             progress("计算", "技术指标与全市场盘面")
-            facts = compute(snapshot, market_history=self.store.market_history())
-            self.store.update_run(ident, facts=facts, metadata={"trigger": trigger, "input_mode": input_mode, "asof": facts["asof"], "snapshot_id": snapshot["id"]})
+            facts = compute(snapshot, market_history=self.store.us_breadth_history() if selected == "US" else self.store.market_history())
+            self.store.update_run(ident, facts=facts, metadata={**context, "asof": facts["asof"], "snapshot_id": snapshot["id"]})
             reply, ai_error = None, None
             if no_ai:
                 ai_error = {"code": "ai_skipped", "message": "本轮按请求只计算程序事实，未调用AI"}
@@ -156,7 +175,7 @@ class Engine:
                     ai_error = exc.as_dict()
             status = "partial" if ai_error or facts["limitations"] or (reply and reply["coverage"]["missing"]) else "completed"
             self.store.update_run(ident, status=status, finished_at=now(), analysis=reply, error=ai_error,
-                                  metadata={"trigger": trigger, "input_mode": input_mode, "asof": facts["asof"], "snapshot_id": snapshot["id"],
+                                  metadata={**context, "asof": facts["asof"], "snapshot_id": snapshot["id"],
                                             "facts_hash": digest(facts), "knowledge_refs": reply["knowledge_refs"] if reply else []})
             progress("完成", "轮次 " + ident)
             return self.store.get_run(ident)

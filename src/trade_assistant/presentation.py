@@ -27,6 +27,18 @@ def select(facts, analysis=None):
     allowed = set(eligible_ids(facts))
     proposed = ((analysis or {}).get("result") or {}).get("ranked_asset_ids")
     is_ai = isinstance(proposed, list) and len(proposed) == len(set(proposed)) and set(proposed) == allowed
+    if facts.get("analysis_market") == "US":
+        def us_key(item):
+            v = item.get("volume_price") or {}
+            return (-((item.get("price_structure") or {}).get("return_20d_pct") or v.get("return_20d_pct") or 0), -(1 if (v.get("obv_change") or 0) > 0 else 0), -(v.get("drawdown_20d_pct") or 0), item["asset_id"])
+        ordered = proposed if is_ai else [x["asset_id"] for x in sorted((x for x in candidates if x["asset_id"] in allowed), key=us_key)]
+        return {"overall_top3": ordered[:3], "industry_top3": [x for x in ordered if x.startswith("us-sector:")][:3], "ordered_ids": ordered,
+                "groups": [{"title": "美国三大指数", "asset_ids": [x["asset_id"] for x in candidates if x["kind"] == "index"]},
+                           {"title": "选定美国行业", "asset_ids": [x["asset_id"] for x in candidates if x["kind"] == "industry"]}],
+                "source": "ai_comprehensive" if is_ai else "program_us_reference", "label": "美股逻辑、模式与技术综合排序" if is_ai else "美股技术参考 · 未获AI综合判断",
+                "eligible_count": len(allowed), "analyzed_count": len(candidates), "dynamic_analyzed": 0,
+                "rank_missing": [x["asset_id"] for x in candidates if x["asset_id"] not in allowed],
+                "reference_method": "程序仅按20日回报、OBV方向、回撤描述相对强度；无胜率或交易阈值"}
     ordered = proposed if is_ai else [x["asset_id"] for x in sorted((x for x in candidates if x["asset_id"] in allowed), key=reference_key)]
     dynamic_ids = {x["asset_id"] for x in candidates if "同花顺行业成交额前10" in x.get("reasons", [])}
     industry_top = [x for x in ordered if x in dynamic_ids][:3]

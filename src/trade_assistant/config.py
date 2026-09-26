@@ -6,6 +6,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 from .util import AppError, PROJECT, write_json
+from .markets import market
 
 DEFAULT = Path(__file__).parent / "defaults" / "config.json"
 SYMBOL = re.compile(r"^(?:sh|sz)\d{6}$")
@@ -18,6 +19,44 @@ def validate(config):
     if not isinstance(config, dict) or config.get("schema_version") != 1:
         raise AppError("validation_error", "配置 schema_version 必须为 1")
     config = copy.deepcopy(config)
+    config["active_market"] = market(config.get("active_market", "CN"))
+    scheduled = config.setdefault("scheduled_markets", ["CN"])
+    if not isinstance(scheduled, list) or not scheduled or any(not isinstance(x, str) for x in scheduled) or len(scheduled) != len(set(scheduled)):
+        raise AppError("validation_error", "scheduled_markets需要不重复的市场列表")
+    for value in scheduled:
+        market(value)
+    us_default = json.loads((DEFAULT.parent / "us.json").read_text(encoding="utf-8"))
+    us = config.setdefault("us", us_default)
+    if not isinstance(us, dict):
+        raise AppError("validation_error", "us配置需要对象")
+    for key, value in us_default.items():
+        us.setdefault(key, copy.deepcopy(value))
+    for key in ("indices", "sectors"):
+        catalog = {x["asset_id"]: x for x in us_default[key]}
+        if not isinstance(us[key], list) or len(us[key]) > len(catalog):
+            raise AppError("validation_error", "美股观察范围超出已确认目录")
+        seen = set()
+        for row in us[key]:
+            if not isinstance(row, dict) or row.get("asset_id") not in catalog or row["asset_id"] in seen:
+                raise AppError("validation_error", "美股对象身份无效或重复")
+            if row.get("symbol") != catalog[row["asset_id"]]["symbol"]:
+                raise AppError("validation_error", "美股代表代码需与已核实身份一致")
+            seen.add(row["asset_id"])
+            row.update(catalog[row["asset_id"]])
+    if len(us["indices"]) != 3:
+        raise AppError("validation_error", "美股三大指数必须保留")
+    tech = us.get("technical")
+    if not isinstance(tech, dict):
+        raise AppError("validation_error", "us.technical需要对象")
+    for key in ("ma_periods", "volume_periods"):
+        val = tech.get(key)
+        if not isinstance(val, list) or not val or len(val) > 8 or any(type(n) is not int or not 2 <= n <= 250 for n in val) or len(set(val)) != len(val):
+            raise AppError("validation_error", "美股技术窗口需为2–250的无重复整数列表")
+    if type(tech.get("obv_lookback")) is not int or not 2 <= tech["obv_lookback"] <= 250:
+        raise AppError("validation_error", "美股OBV比较窗口须为2–250")
+    from .us_observations import validate_observations, validate_breadth
+    us["observations"] = validate_observations(us["observations"])
+    us["breadth_history"] = validate_breadth(us["breadth_history"])
     defaults = {"provider": "codex", "model": "", "deepseek": {"enabled": False, "base_url": "https://api.deepseek.com", "model": "deepseek-flash", "timeout": 180}}
     ai_config = config.setdefault("ai", {})
     if not isinstance(ai_config, dict):

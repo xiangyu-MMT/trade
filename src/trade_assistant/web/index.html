@@ -6,10 +6,12 @@
 <title>trade · 交易辅助</title>
 <link rel="stylesheet" href="/style.css">
 <script src="/app.js" defer></script>
+<script src="/us.js" defer></script>
 </head>
 <body>
 <aside class="sidebar">
   <a class="brand" href="/" aria-label="trade首页"><span class="brand-mark">t</span><span>trade<small>翔宇的交易工作台</small></span></a>
+  <label class="market-select"><span>分析市场</span><select id="market-select"><option value="CN">A股</option><option value="US">美股</option></select></label>
   <nav aria-label="主要功能">
     <button class="nav-item selected" data-view="overview">概览<span>市场与方向</span></button>
     <button class="nav-item" data-view="candidates">候选<span>图表与依据</span></button>

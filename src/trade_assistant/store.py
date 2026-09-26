@@ -5,8 +5,9 @@ from contextlib import contextmanager
 from pathlib import Path
 
 from .util import AppError, dumps, new_id, now
+from .markets import belongs, market, run_market, scope
 
-KINDS = {"logic", "technical", "mode", "plan", "execution", "review"}
+KINDS = {"logic", "technical", "mode", "plan", "execution", "review", "pairing"}
 STATUSES = {"draft", "confirmed", "recorded", "generated"}
 IDENTIFIER = re.compile(r"^[A-Za-z0-9_.:-]{1,120}$")
 
@@ -108,7 +109,7 @@ class Store:
     def get_ref(self, ref):
         return self.get_object(*split_reference(ref))
 
-    def list_objects(self, kind=None, confirmed=False, include_deleted=False):
+    def list_objects(self, kind=None, confirmed=False, include_deleted=False, analysis_market=None):
         if kind is not None and kind not in KINDS:
             raise AppError("validation_error", "对象类别无效")
         where, params = [], []
@@ -125,7 +126,23 @@ class Store:
         sql += " ORDER BY o.created_at DESC"
         with self.connection() as conn:
             rows = conn.execute(sql, params).fetchall()
-        return [self.object_row(row) for row in rows]
+        objects = [self.object_row(row) for row in rows]
+        if analysis_market is not None:
+            selected = market(analysis_market)
+            objects = [x for x in objects if belongs(x["payload"], selected)]
+        return objects
+
+    def record_pairing(self, payload, expected_revision=None):
+        if type(expected_revision) is not int and expected_revision is not None:
+            raise AppError("validation_error", "配对版本需为整数")
+        ident = "pair-" + payload["index_id"].replace(":", "-")
+        with self.connection(True) as conn:
+            row = conn.execute("SELECT revision FROM objects WHERE id=? ORDER BY revision DESC LIMIT 1", (ident,)).fetchone()
+            revision = row[0] if row else 0
+            if revision != (expected_revision or 0):
+                raise AppError("conflict", "配对已变化，请重新查看并确认", status=409)
+            conn.execute("INSERT INTO objects VALUES(?,?,?,?,?,?,?,?)", (ident, "pairing", revision + 1, "recorded", dumps(payload), now(), None, None))
+        return self.get_object(ident)
 
     def versions(self, ident):
         with self.connection() as conn:
@@ -242,16 +259,30 @@ class Store:
             result[key] = json.loads(result[key]) if result[key] else None
         return result
 
-    def list_runs(self, limit=30):
+    def list_runs(self, limit=30, analysis_market=None):
         with self.connection() as conn:
-            rows = conn.execute("SELECT id,status,created_at,finished_at,error,metadata FROM runs ORDER BY created_at DESC LIMIT ?", (limit,)).fetchall()
+            rows = conn.execute("SELECT id,status,created_at,finished_at,error,metadata FROM runs ORDER BY created_at DESC LIMIT ?", (10000 if analysis_market else limit,)).fetchall()
         result = []
         for row in rows:
             item = dict(row)
             for key in ("error", "metadata"):
                 item[key] = json.loads(item[key]) if item[key] else None
-            result.append(item)
-        return result
+            if analysis_market is None or run_market(item) == market(analysis_market):
+                result.append(item)
+        return result[:limit]
+
+    def us_breadth_history(self):
+        result = {}
+        with self.connection() as conn:
+            for row in conn.execute("SELECT facts FROM runs WHERE facts IS NOT NULL ORDER BY created_at DESC LIMIT 1000"):
+                facts = json.loads(row[0])
+                if facts.get("analysis_market") != "US":
+                    continue
+                breadth = facts.get("breadth") or {}
+                for point in breadth.get("rows", []):
+                    if not point.get("forming"):
+                        result.setdefault((point.get("scope_id", breadth.get("scope_id")), point["date"]), point)
+        return sorted(result.values(), key=lambda x: x["date"])[-600:]
 
     def market_history(self):
         from .volume_price import completed_asof
@@ -320,11 +351,11 @@ class Store:
                 records[ident] = {name: (folder / name).read_text(encoding="utf-8") for name in names
                                   if (folder / name).is_file() and not (folder / name).is_symlink()}
         config = dict(config, auto_refresh=False)
-        return {"archive_version": 2, "exported_at": now(), "config": config,
+        return {"archive_version": 3, "exported_at": now(), "config": config,
                 "objects": objects, "runs": runs, "ai_records": records, "lifecycle": lifecycle}
 
     def import_data(self, archive):
-        if not isinstance(archive, dict) or archive.get("archive_version") not in (1, 2):
+        if not isinstance(archive, dict) or archive.get("archive_version") not in (1, 2, 3):
             raise AppError("validation_error", "迁移文件版本不支持")
         objects, runs = archive.get("objects"), archive.get("runs")
         if not isinstance(objects, list) or not isinstance(runs, list) or len(objects) > 100000 or len(runs) > 10000:
@@ -368,6 +399,15 @@ class Store:
                 payload = json.loads(row["payload"])
                 if not isinstance(payload, dict):
                     raise ValueError()
+                market(payload.get("analysis_market", "CN"))
+                if "market_scope" in payload:
+                    scope(payload)
+                if "execution_market" in payload and payload["execution_market"] is not None:
+                    market(payload["execution_market"])
+                if row["kind"] == "pairing":
+                    from .config import TRADABLE_SYMBOL
+                    if payload.get("analysis_market") != "US" or payload.get("execution_market") != "CN" or payload.get("index_id") not in {"us:DJI", "us:NDX", "us:SPX"} or not TRADABLE_SYMBOL.fullmatch(str(payload.get("asset_id", ""))) or not isinstance(payload.get("selection"), dict):
+                        raise AppError("validation_error", "配对迁移缺少已核实身份、市场或筛选依据")
                 dumps(payload)
             except (ValueError, TypeError):
                 raise AppError("validation_error", "迁移对象内容不是有效 JSON")
@@ -389,6 +429,12 @@ class Store:
             if row["id"] in staged_runs:
                 raise AppError("validation_error", "迁移文件存在重复轮次")
             staged_runs[row["id"]] = row
+            meta = json.loads(row["metadata"] or "{}")
+            selected = market(meta.get("analysis_market", "CN"))
+            for name in ("snapshot", "facts"):
+                part = json.loads(row[name] or "{}")
+                if part and market(part.get("analysis_market", "CN")) != selected:
+                    raise AppError("validation_error", "迁移轮次的快照/事实市场不一致")
         added_objects = added_runs = 0
         with self.connection(True) as conn:
             existing = {(row["id"], row["revision"]): dict(row) for row in conn.execute("SELECT * FROM objects")}
@@ -405,7 +451,7 @@ class Store:
                 refs = list(p.get("knowledge_refs") or [])
                 refs.extend(p.get("execution_refs") or [])
                 refs.extend(p.get("plan_versions") or [])
-                for key in ("plan_ref", "origin_ref"):
+                for key in ("plan_ref", "origin_ref", "pairing_ref"):
                     if p.get(key):
                         refs.append(p[key])
                 for ref in refs:
@@ -413,6 +459,19 @@ class Store:
                         raise AppError("validation_error", "迁移文件包含缺失对象引用", {"ref": ref})
                 if p.get("run_id") and p["run_id"] not in run_ids:
                     raise AppError("validation_error", "迁移文件缺少关联分析轮次")
+                selected = market(p.get("analysis_market", "CN"))
+                for ref in refs:
+                    target = known_objects[split_reference(ref)]
+                    target_payload = json.loads(target["payload"])
+                    if target["kind"] in ("logic", "technical", "mode"):
+                        if selected not in scope(target_payload) and row["kind"] not in ("logic", "technical", "mode"):
+                            raise AppError("validation_error", "迁移知识引用不适用于分析市场")
+                    elif row["kind"] not in ("logic", "technical", "mode") and not belongs(target_payload, selected):
+                        raise AppError("validation_error", "迁移对象引用的市场归属不一致")
+                if p.get("run_id"):
+                    linked = (staged_runs.get(p["run_id"]) or known_runs[p["run_id"]])
+                    if market(json.loads(linked["metadata"] or "{}").get("analysis_market", "CN")) != selected:
+                        raise AppError("validation_error", "迁移计划/档案与关联轮次市场不一致")
                 key = (row["id"], row["revision"])
                 old = existing.get(key)
                 if old:
@@ -422,6 +481,15 @@ class Store:
                     conn.execute("INSERT INTO objects VALUES (?,?,?,?,?,?,?,?)", [row[k] for k in obj_columns])
                     added_objects += 1
             for ident, row in staged_runs.items():
+                facts = json.loads(row["facts"] or "{}")
+                for paired in facts.get("paired_etfs", {}).values():
+                    ref = paired.get("pairing_ref")
+                    key = split_reference(ref)
+                    if key not in known_objects or known_objects[key]["kind"] != "pairing":
+                        raise AppError("validation_error", "迁移轮次缺少其引用的固定配对版本")
+                    p = json.loads(known_objects[key]["payload"])
+                    if p.get("asset_id") != paired.get("asset_id") or p.get("index_id") != paired.get("index_id"):
+                        raise AppError("validation_error", "迁移轮次ETF与原配对不一致")
                 old = known_runs.get(ident)
                 if old:
                     if any(old[k] != row[k] for k in run_columns):

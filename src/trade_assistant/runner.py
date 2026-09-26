@@ -91,7 +91,7 @@ class Runner:
         if cfg["auto_refresh"] and self.next_due:
             upcoming = (datetime.now(CN) + timedelta(seconds=max(0, self.next_due - time.time()))).isoformat(timespec="seconds")
         return {"active": active, "last_job_id": last, "next_refresh": upcoming,
-                "auto_refresh": cfg["auto_refresh"], "refresh_seconds": cfg["refresh_seconds"], "config_error": config_error}
+                "auto_refresh": cfg["auto_refresh"], "scheduled_markets": cfg.get("scheduled_markets", ["CN"]), "refresh_seconds": cfg["refresh_seconds"], "config_error": config_error}
 
     def stop(self):
         self.stop_event.set()

@@ -27,7 +27,7 @@ class HttpClient:
         with self.lock:
             self.attempts.append(row)
 
-    def get(self, url, params=None, encoding="utf-8", ttl=0, referer=None, stale=False):
+    def get(self, url, params=None, encoding="utf-8", ttl=0, referer=None, stale=False, user_agent=None):
         if params:
             url += ("&" if "?" in url else "?") + urllib.parse.urlencode(params, safe=",:!")
         key = hashlib.sha256(url.encode()).hexdigest()
@@ -53,7 +53,7 @@ class HttpClient:
             if delay:
                 time.sleep(delay)
             started = time.monotonic()
-            headers = {"User-Agent": "Mozilla/5.0", "Accept-Encoding": "identity"}
+            headers = {"User-Agent": ("Python-urllib/" + urllib.request.__version__) if user_agent == "stdlib" else (user_agent or "Mozilla/5.0"), "Accept-Encoding": "identity"}
             if referer:
                 headers["Referer"] = referer
             try:

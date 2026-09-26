@@ -8,6 +8,11 @@ const statuses = {draft:'待确认',confirmed:'已确认',recorded:'已回填',g
 const stances = {candidate:'可关注方向',observe:'观察',wait:'等待'};
 let state = {knowledge:[],confirmed_knowledge:[],plans:[],confirmed_plans:[],executions:[],reviews:[],runs:[]};
 let currentRun = null, configInfo = null, view = 'overview';
+let selectedMarket = 'CN';
+try { selectedMarket = localStorage.getItem('p03.market') === 'US' ? 'US' : 'CN'; } catch (_) {}
+const linkedMarket=new URLSearchParams(location.search).get('market');
+if(['CN','US'].includes(linkedMarket))selectedMarket=linkedMarket;
+$('#market-select').value = selectedMarket;
 const chartPeriods = Object.create(null);
 const chartMaChoices = Object.create(null);
 const maColors = {5:'#b5ac86',20:'#94b4cd',60:'#b39fc3',120:'#9fbfac'};
@@ -47,7 +52,7 @@ function cut(text,n=160) { const s=String(text||'');return s.length>n?s.slice(0,
 function pill(status) { const warn=['draft','partial','observe','wait','interrupted'].includes(status),bad=status==='failed';return `<span class="pill ${bad?'error':warn?'warn':''}">${esc(statuses[status]||stances[status]||status)}</span>`; }
 function list(items) { return items?.length?`<ul class="data-list">${items.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:'<p class="muted small">暂无</p>'; }
 function button(label,action,attrs='',disabled=false) { return `<button type="button" class="button small" data-action="${action}" ${attrs} ${disabled?'disabled':''}>${label}</button>`; }
-function factItem(id) { return currentRun?.facts?.candidates?.find(x=>x.asset_id===id); }
+function factItem(id) { return [...(currentRun?.facts?.candidates||[]),...(currentRun?.facts?.watch_indices||[]),...Object.values(currentRun?.facts?.paired_etfs||{})].find(x=>x.asset_id===id); }
 function opinion(id) { return currentRun?.analysis?.result?.candidates?.find(x=>x.asset_id===id); }
 function objectByRef(ref) { return [...state.plans,...(state.confirmed_plans||[])].find(x=>x.ref===ref); }
 function evidenceName(ref) {
@@ -65,11 +70,17 @@ async function loadState(force=false) {
   if (loading) return;
   loading=true;
   try {
-    const next=await api('/api/state');state=next;
+    const requestedMarket=selectedMarket;
+    const next=await api('/api/state?market='+requestedMarket);
+    if(requestedMarket!==selectedMarket)return;
+    state=next;
     renderStatus(next);
     if (followLatest&&next.latest_report_id&&currentRun?.id!==next.latest_report_id) {
-      currentRun=await api('/api/runs/'+encodeURIComponent(next.latest_report_id));force=true;
+      const nextRun=await api('/api/runs/'+encodeURIComponent(next.latest_report_id));
+      if(requestedMarket!==selectedMarket)return;
+      currentRun=nextRun;force=true;
     }
+    if(followLatest&&!next.latest_report_id)currentRun=null;
     const signature=JSON.stringify([next.latest_report_id,next.knowledge.map(x=>[x.ref,x.status]),next.plans.map(x=>[x.ref,x.status]),next.executions.map(x=>x.ref),next.reviews.map(x=>x.ref),next.lifecycle,next.runs.map(x=>[x.id,x.status])]);
     if (force||signature!==stateSignature) {stateSignature=signature;render();}
     if (next.active&&!watchedJobs.has(next.active.id)) watchJob(next.active.id);
@@ -84,7 +95,7 @@ function renderStatus(data) {
   $('#cancel-run').hidden=!data.active;
   $('#progress').hidden=!data.active;
   $('#auto-refresh').checked=Boolean(data.auto_refresh);
-  $('#auto-label').textContent=`运行时每${num((data.refresh_seconds||3600)/3600,1)}小时刷新`;
+  $('#auto-label').textContent=`每${num((data.refresh_seconds||3600)/3600,1)}小时 · ${(data.scheduled_markets||['CN']).map(x=>x==='US'?'美股':'A股').join('＋')}`;
   if (data.active) {
     const elapsed=Math.max(0,Math.floor((Date.now()-new Date(data.active.created_at).valueOf())/1000));
     $('#runtime-status').textContent=`${data.active.stage} · ${data.active.detail||'处理中'} · ${elapsed}秒`;
@@ -112,7 +123,9 @@ async function watchJob(id) {
       if (job.status!=='running') {
         if (job.error) toast(job.error.message,true);
         else { toast(job.result?.status==='partial'?'分析已生成，数据缺口已保留':'任务已完成'); if (job.kind==='plan'||job.kind==='review') view='plans'; }
-        await loadState(true);return;
+        await loadState(true);
+        if(job.kind==='pairing'&&job.result?.preview_id)await showPairingPreview(job.result.preview_id);
+        return;
       }
     }
     toast('任务仍在运行，可继续查看状态或停止本次。',true);
@@ -124,6 +137,7 @@ function runChooser() {
   return `<div class="toolbar"><label class="small muted">查看轮次</label><select id="run-select" style="max-width:290px"><option value="latest" ${followLatest?'selected':''}>最近生成的结果</option>${state.runs.filter(x=>['completed','partial'].includes(x.status)).map(x=>`<option value="${esc(x.id)}" ${!followLatest&&currentRun?.id===x.id?'selected':''}>${esc(time(x.created_at))} · ${esc(statuses[x.status])}</option>`).join('')}</select>${currentRun?button('导出此轮HTML','report'):''}</div>`;
 }
 function emptyReport() {
+  if(selectedMarket==='US')return '<div class="card empty"><h2>开始一轮美股观察</h2><p>更新分析后显示三大指数、七行业、NYSE＋NASDAQ广度、纽约金与宏观。境内ETF首次筛选完成后固定代码。</p><p class="small muted">正式行情保留来源日期；取数和AI期间可继续看旧报告。</p></div>';
   return '<div class="card empty"><h2>开始一轮有依据的分析</h2><p>点击右上角“更新分析”，获取市场与同花顺行业数据，再由 Codex 对照你的档案解读。</p><p class="small">首次取数与推导可能需要几分钟；页面会显示阶段。你也可以先进入档案和配置。</p></div>';
 }
 function marketChart(m) {
@@ -165,7 +179,10 @@ function displayMaLegend(id) {
   return displayMAs(id).map(p=>`<span style="color:${maColors[p]}">MA${p}日</span>`).join(' · ')||'均线已隐藏';
 }
 function chartSVG(item,period) {
-  const tech=item.technical||{},daily=tech.bars||[],source=period==='weekly'?(tech.weekly||[]):daily;
+  const tech=item.technical||{},daily=tech.bars||[],rawSource=period==='weekly'?(tech.weekly||[]):daily;
+  const proxy=tech.volume_proxy,proxyRows=proxy?(period==='weekly'?proxy.weekly:proxy.bars):null;
+  const volumeByDate=new Map((proxyRows||[]).map(b=>[b.date,b.volume]));
+  const source=proxy?rawSource.map(b=>({...b,volume:volumeByDate.get(b.date)??null})):rawSource;
   if(source.length<2)return '<p class="small muted">暂无足够K线资料</p>';
   const bars=source.slice(-65),offset=source.length-bars.length,mas={};
   for(const p of displayMAs(item.asset_id)){
@@ -198,7 +215,8 @@ function candidateCard(item) {
   const forming=period==='weekly'?tech.weekly?.slice(-1)[0]?.forming:tech.forming;
   const read=ai?.volume_price_reading||v.summary||'量价历史不足';
   const strength=ai?.strength_reason||ai?.reason||'当前仅提供程序量价事实';
-  return `<article class="card candidate-card" data-asset-id="${esc(item.asset_id)}" data-chart-period="${period}"><div class="title-line"><h3>${esc(item.name)}</h3>${ai?pill(ai.stance):'<span class="pill neutral">量价参考</span>'}</div><div class="card-chart-tools"><span class="small muted">${esc(tech.asof||'缺历史')}${forming?' · 形成中':''}</span>${chartToggle(item.asset_id,period)}</div><div class="candle-chart">${chartSVG(item,period)}</div>${maControls(item.asset_id)}<div class="volume-insight">${esc(cut(read,100))}</div><p>${esc(cut(strength,100))}</p>${ai?.against?.[0]?`<p class="counterpoint">留意：${esc(cut(ai.against[0],75))}</p>`:''}<div class="toolbar">${button('查看依据','candidate-detail',`data-id="${esc(item.asset_id)}"`)}${button('拟定计划','draft-plan',`data-id="${esc(item.asset_id)}"`,!ai||Boolean(activeJob))}</div></article>`;
+  if(selectedMarket==='US'&&(item.kind==='etf'||item.kind==='future'))return usObservationCard(item);
+  return `<article class="card candidate-card" data-asset-id="${esc(item.asset_id)}" data-chart-period="${period}"><div class="title-line"><h3>${esc(item.name)}</h3>${ai?pill(ai.stance):'<span class="pill neutral">量价参考</span>'}</div>${selectedMarket==='US'&&item.kind==='industry'?`<p class="small muted identity-note">${esc(item.identity||'美国观察代理')}</p>`:''}<div class="card-chart-tools"><span class="small muted">${esc(tech.asof||'缺历史')}${forming?' · 形成中':''}</span>${chartToggle(item.asset_id,period)}</div><div class="candle-chart">${chartSVG(item,period)}</div>${tech.volume_proxy?`<p class="small muted proxy-note">量柱：${esc(tech.volume_proxy.symbol)} 美国ETF成交量；OBV按代理自身价格计算</p>`:''}${maControls(item.asset_id)}<div class="volume-insight">${esc(cut(read,100))}</div><p>${esc(cut(strength,100))}</p>${ai?.against?.[0]?`<p class="counterpoint">留意：${esc(cut(ai.against[0],75))}</p>`:''}<div class="toolbar">${button('查看依据','candidate-detail',`data-id="${esc(item.asset_id)}"`)}${button('拟定计划','draft-plan',`data-id="${esc(item.asset_id)}"`,!ai||Boolean(activeJob))}</div></article>`;
 }
 
 function coveragePanel() {
@@ -208,6 +226,7 @@ function coveragePanel() {
   return `<details><summary>数据覆盖、口径与局限</summary><div>${aiDiagnostics}<div class="table-wrap"><table><thead><tr><th>数据组</th><th>状态</th><th>说明</th></tr></thead><tbody>${(f.coverage||[]).map(x=>`<tr><td>${esc(x.group)}</td><td>${x.status==='ok'?'<span class="pill">已取得</span>':'<span class="pill warn">需留意</span>'}</td><td>${esc(x.detail)}</td></tr>`).join('')}</tbody></table></div>${list(currentRun.analysis?.result?.limitations||[])}<p class="small muted">${esc(f.market?.limit_definition||'')}</p></div></details>`;
 }
 function renderOverview() {
+  if(selectedMarket==='US')return usRenderOverview();
   if(!currentRun?.facts)return emptyReport();
   const f=currentRun.facts,m=f.market,a=currentRun.analysis?.result,sel=currentRun.presentation||{},trace=currentRun.analysis?.trace,margin=f.margin;
   const cards=[['市场点评',a?.market?.commentary||a?.market?.summary||'尚无本轮AI点评，先查看程序事实。'],['盘面结构',a?.market?.structure||'本轮尚无结构解读，量能与市场广度分别列于下方。'],['市场模式',a?.market?.mode_summary||a?.market?.state||'证据未齐，保留判断。']];
@@ -222,6 +241,7 @@ function marginTable() {
   return `<p class="small muted" style="margin-top:12px">融资余额 ${short(m?.latest?.financing_balance,'元')} · 较前一发布日变化 ${short(m?.change,'元')} · ${esc(m?.asof||'缺失')}</p><div class="table-wrap"><table><thead><tr><th>ETF观察篮子</th><th>最新份额</th><th>较前一发布日</th></tr></thead><tbody>${(currentRun.facts.etf_shares||[]).map(x=>`<tr><td>${esc(x.name)}</td><td>${short(x.rows?.[0]?.shares,'份')}<div class="small muted">${esc(x.rows?.[0]?.date||'源日期未提供')}</div></td><td>${short(x.change,'份')}</td></tr>`).join('')}</tbody></table></div>`;
 }
 function renderCandidates() {
+  if(selectedMarket==='US')return usRenderCandidates();
   if(!currentRun?.facts)return emptyReport();
   const p=currentRun.presentation||{},visible=(p.groups||[]).reduce((n,g)=>n+g.asset_ids.length,0);
   return `${runChooser()}<div class="section-title"><div><h2>候选与依据</h2><p class="small muted">已分析 ${p.analyzed_count||0} 项 · 常规展示 ${visible} 项 · ${esc(p.label||'等待排序')}</p></div></div>${(p.groups||[]).filter(g=>g.asset_ids.length).map(g=>`<section class="candidate-group"><div class="section-title"><h2>${esc(g.title)}</h2><span class="small muted">${g.asset_ids.length} 项</span></div><div class="candidate-grid">${g.asset_ids.map(factItem).filter(Boolean).map(candidateCard).join('')}</div></section>`).join('')}<p class="small muted">成交额前十行业实际分析 ${p.dynamic_analyzed||0} 项，只展示其中最强三项；固定关注保留，同一对象合并展示。完整分析记录保存在本轮历史中。</p>${coveragePanel()}`;
@@ -253,13 +273,14 @@ function renderRunProposals() {
 }
 function renderSettings() {
   const cfg=configInfo?.config,ai=aiInfo?.config||cfg?.ai||{},ds=ai.deepseek||{};
-  return `<section class="card"><div class="card-head"><div><h2>AI接入与后备</h2><p class="small muted">Codex沿用当前可用配置；DeepSeek可作后备或直接使用。</p></div>${button('检查接入状态','check-codex')}</div><p id="codex-status" class="small muted">${aiInfo?.key_configured?'DeepSeek凭据已配置，密钥不回显。':'DeepSeek尚未配置密钥。'}</p><div class="fields"><label class="field"><span>优先使用</span><select id="ai-provider"><option value="codex" ${ai.provider!=='deepseek'?'selected':''}>Codex · 失败时使用已启用后备</option><option value="deepseek" ${ai.provider==='deepseek'?'selected':''}>DeepSeek API</option></select></label><label class="field"><span>Codex命令</span><input id="ai-command" value="${esc(ai.command||'codex')}"></label><label class="field"><span>Codex模型（留空沿用现有配置）</span><input id="ai-model" value="${esc(ai.model||'')}"></label><label class="field"><span>Codex最长等待（秒）</span><input id="ai-timeout" type="number" min="30" max="900" value="${ai.timeout||300}"></label><label class="field"><span>DeepSeek服务地址</span><input id="ds-url" value="${esc(ds.base_url||'https://api.deepseek.com')}"></label><label class="field"><span>DeepSeek模型</span><input id="ds-model" value="${esc(ds.model||'deepseek-flash')}"></label><label class="field"><span>DeepSeek API Key（留空保留现有）</span><input id="ds-key" type="password" autocomplete="new-password" placeholder="${aiInfo?.key_configured?'已配置 · 输入以更新':'在本机填写密钥'}"></label><label class="field"><span>DeepSeek最长等待（秒）</span><input id="ds-timeout" type="number" min="30" max="900" value="${ds.timeout||180}"></label></div><div class="toolbar"><label class="toggle"><input id="ai-enabled" type="checkbox" ${ai.enabled!==false?'checked':''}> 启用AI</label><label class="toggle"><input id="ds-enabled" type="checkbox" ${ds.enabled?'checked':''}> 启用DeepSeek</label>${button('保存AI配置','save-ai')}</div><p class="form-note">密钥保存在本机独立凭据文件，报告与资料迁移不包含密钥。每次启动默认关闭周期运行。</p></section><section class="card"><div class="card-head"><h2>候选与数据配置</h2>${button('添加个股','add-stock')}</div><p class="small muted">同花顺行业定义，宽基/个股清单与实际交易品种映射由你配置。</p><details><summary>编辑完整配置文件</summary><div><p class="form-note">文件入口：${esc(configInfo?.path||state.config_path||'')}</p>${configInfo?.error?`<p class="notice error">${esc(configInfo.error.message)}</p>`:''}<textarea id="config-editor" class="code" spellcheck="false">${esc(cfg?JSON.stringify(cfg,null,2):(configInfo?.raw||''))}</textarea><div class="toolbar" style="margin-top:12px">${button('保存配置','save-config')}${button('重新读取','reload-config')}</div><p class="form-note">不要把密钥放进此JSON；上方有独立入口。</p></div></details></section><section class="card"><h2>本地资料迁移</h2><p class="small muted">知识、计划、执行、复盘、AI记录与回收站状态一起迁移；不包含登录凭据。导入不会开启定时。</p><div class="toolbar">${button('导出资料','export-archive')}<label class="button small">导入资料<input id="import-file" type="file" accept=".json,application/json" hidden></label></div></section>`;
+  return `<section class="card"><div class="card-head"><div><h2>AI接入与后备</h2><p class="small muted">Codex沿用当前可用配置；DeepSeek可作后备或直接使用。</p></div>${button('检查接入状态','check-codex')}</div><p id="codex-status" class="small muted">${aiInfo?.key_configured?'DeepSeek凭据已配置，密钥不回显。':'DeepSeek尚未配置密钥。'}</p><div class="fields"><label class="field"><span>优先使用</span><select id="ai-provider"><option value="codex" ${ai.provider!=='deepseek'?'selected':''}>Codex · 失败时使用已启用后备</option><option value="deepseek" ${ai.provider==='deepseek'?'selected':''}>DeepSeek API</option></select></label><label class="field"><span>Codex命令</span><input id="ai-command" value="${esc(ai.command||'codex')}"></label><label class="field"><span>Codex模型（留空沿用现有配置）</span><input id="ai-model" value="${esc(ai.model||'')}"></label><label class="field"><span>Codex最长等待（秒）</span><input id="ai-timeout" type="number" min="30" max="900" value="${ai.timeout||300}"></label><label class="field"><span>DeepSeek服务地址</span><input id="ds-url" value="${esc(ds.base_url||'https://api.deepseek.com')}"></label><label class="field"><span>DeepSeek模型</span><input id="ds-model" value="${esc(ds.model||'deepseek-flash')}"></label><label class="field"><span>DeepSeek API Key（留空保留现有）</span><input id="ds-key" type="password" autocomplete="new-password" placeholder="${aiInfo?.key_configured?'已配置 · 输入以更新':'在本机填写密钥'}"></label><label class="field"><span>DeepSeek最长等待（秒）</span><input id="ds-timeout" type="number" min="30" max="900" value="${ds.timeout||180}"></label></div><div class="toolbar"><label class="toggle"><input id="ai-enabled" type="checkbox" ${ai.enabled!==false?'checked':''}> 启用AI</label><label class="toggle"><input id="ds-enabled" type="checkbox" ${ds.enabled?'checked':''}> 启用DeepSeek</label>${button('保存AI配置','save-ai')}</div><p class="form-note">密钥保存在本机独立凭据文件，报告与资料迁移不包含密钥。每次启动默认关闭周期运行。</p></section><section class="card"><div class="card-head"><h2>候选与数据配置</h2>${selectedMarket==='CN'?button('添加个股','add-stock'):''}</div><p class="small muted">${selectedMarket==='US'?'美股观察范围与独立技术参数在 us 配置中；固定境内ETF通过上方入口管理。':'同花顺行业定义，宽基/个股清单与实际交易品种映射由你配置。'}</p><details><summary>编辑完整配置文件</summary><div><p class="form-note">文件入口：${esc(configInfo?.path||state.config_path||'')}</p>${configInfo?.error?`<p class="notice error">${esc(configInfo.error.message)}</p>`:''}<textarea id="config-editor" class="code" spellcheck="false">${esc(cfg?JSON.stringify(cfg,null,2):(configInfo?.raw||''))}</textarea><div class="toolbar" style="margin-top:12px">${button('保存配置','save-config')}${button('重新读取','reload-config')}</div><p class="form-note">不要把密钥放进此JSON；上方有独立入口。</p></div></details></section><section class="card"><h2>本地资料迁移</h2><p class="small muted">知识、计划、执行、复盘、AI记录与回收站状态一起迁移；不包含登录凭据。导入不会开启定时。</p><div class="toolbar">${button('导出资料','export-archive')}<label class="button small">导入资料<input id="import-file" type="file" accept=".json,application/json" hidden></label></div></section>`;
 }
 
 function render() {
   document.querySelectorAll('.nav-item').forEach(x=>x.classList.toggle('selected',x.dataset.view===view));
   $('#page-title').textContent=labels[view];
   $('#view-content').innerHTML=({overview:renderOverview,candidates:renderCandidates,plans:renderPlans,knowledge:renderKnowledge,settings:renderSettings}[view])();
+  if(view==='settings')$('#view-content').insertAdjacentHTML('afterbegin',marketSettings());
 }
 
 function field(name,label,value='',type='text',full=false) {
@@ -282,9 +303,9 @@ function planDetail(id) {
 }
 function editPlan(id=null) {
   const old=id?state.plans.find(x=>x.id===id):null,p=old?.payload||{},basis=p.basis||{};
-  const body=`<p class="form-note">实际品种由你指定。关键资料未齐时保留为观察或待补充草稿；保存后仍需确认版本。</p><div class="fields">${field('name','名称',p.name)}${field('asset_id','分析标的ID，例如 ths:881155 / sh000300',p.asset_id)}<label class="field"><span>计划类型</span><select name="plan_type"><option value="observation" ${p.plan_type!=='action'?'selected':''}>观察计划</option><option value="action" ${p.plan_type==='action'?'selected':''}>已指定品种的计划</option></select></label>${field('execution_asset_id','实际ETF/个股ID，观察计划可空',p.execution_asset_id)}${field('basis_logic','逻辑依据',basis.logic,'textarea')}${field('basis_technical','技术依据',basis.technical,'textarea')}${field('basis_mode','模式依据',basis.mode,'textarea')}${field('entry','买入或观察条件',p.entry,'textarea')}${field('exit','退出条件',p.exit,'textarea')}${field('position_risk','仓位与风险限制',p.position_risk,'textarea')}${field('validity','有效期说明',p.validity,'textarea')}${field('validity_until','明确截止日期（可空）',p.validity_until,'date')}${field('missing','待补充事项，每行一项；补齐后再移除',(p.missing||[]).join('\n'),'textarea',true)}</div>`;
+  const body=`<p class="form-note">实际品种由你指定。关键资料未齐时保留为观察或待补充草稿；保存后仍需确认版本。</p><div class="fields">${field('name','名称',p.name)}${field('asset_id',selectedMarket==='US'?'分析标的ID，例如 us:NDX / us-sector:software':'分析标的ID，例如 ths:881155 / sh000300',p.asset_id)}<label class="field"><span>计划类型</span><select name="plan_type"><option value="observation" ${p.plan_type!=='action'?'selected':''}>观察计划</option><option value="action" ${p.plan_type==='action'?'selected':''}>已指定品种的计划</option></select></label>${field('execution_asset_id','实际ETF/个股ID，观察计划可空',p.execution_asset_id)}${field('basis_logic','逻辑依据',basis.logic,'textarea')}${field('basis_technical','技术依据',basis.technical,'textarea')}${field('basis_mode','模式依据',basis.mode,'textarea')}${field('entry','买入或观察条件',p.entry,'textarea')}${field('exit','退出条件',p.exit,'textarea')}${field('position_risk','仓位与风险限制',p.position_risk,'textarea')}${field('validity','有效期说明',p.validity,'textarea')}${field('validity_until','明确截止日期（可空）',p.validity_until,'date')}${field('missing','待补充事项，每行一项；补齐后再移除',(p.missing||[]).join('\n'),'textarea',true)}</div>`;
   openEditor(old?'修订计划 · 新版本草稿':'直接记录计划',body,async form=>{
-    const payload={name:form.get('name'),asset_id:form.get('asset_id'),plan_type:form.get('plan_type'),execution_asset_id:form.get('execution_asset_id')?.trim()||null,basis:{logic:form.get('basis_logic'),technical:form.get('basis_technical'),mode:form.get('basis_mode')},entry:form.get('entry'),exit:form.get('exit'),position_risk:form.get('position_risk'),validity:form.get('validity'),validity_until:form.get('validity_until')||null,missing:String(form.get('missing')||'').split('\n').map(x=>x.trim()).filter(Boolean)};
+    const payload={...(old?{}:{analysis_market:selectedMarket}),name:form.get('name'),asset_id:form.get('asset_id'),plan_type:form.get('plan_type'),execution_asset_id:form.get('execution_asset_id')?.trim()||null,basis:{logic:form.get('basis_logic'),technical:form.get('basis_technical'),mode:form.get('basis_mode')},entry:form.get('entry'),exit:form.get('exit'),position_risk:form.get('position_risk'),validity:form.get('validity'),validity_until:form.get('validity_until')||null,missing:String(form.get('missing')||'').split('\n').map(x=>x.trim()).filter(Boolean)};
     if(old)await api('/api/plans/'+old.id+'/revise','POST',{payload,expected_revision:old.revision});
     else await api('/api/plans/manual','POST',{payload});
     view='plans';toast('计划草稿已保存，确认版本后再按计划执行。');
@@ -292,10 +313,10 @@ function editPlan(id=null) {
 }
 function editKnowledge(id=null) {
   const old=id?state.knowledge.find(x=>x.id===id):null,p=old?.payload||{};
-  const body=`<div class="fields">${field('title','标题',p.title)}<label class="field"><span>主要层面</span><select name="kind" ${old?'disabled':''}>${Object.entries(kinds).map(([k,v])=>`<option value="${k}" ${(old?.kind||'logic')===k?'selected':''}>${v}</option>`).join('')}</select></label><div class="field full"><span>可关联多个层面</span><div class="checkboxes">${Object.entries(kinds).map(([k,v])=>`<label><input type="checkbox" name="layers" value="${k}" ${(p.layers||[old?.kind||'logic']).includes(k)?'checked':''}> ${v}</label>`).join('')}</div></div>${field('body','定义、依据或总结',p.body,'textarea',true)}${field('source','来源',p.source||'用户补充','textarea',true)}${field('evidence','证据说明或链接，每行一项',(p.evidence||[]).join('\n'),'textarea',true)}<label class="field inline full"><input type="checkbox" name="risk" ${p.usage==='risk'?'checked':''}><span>这是个人仓位 / 风险规则，确认后供计划模块引用</span></label></div>`;
+  const body=`<div class="fields">${field('title','标题',p.title)}<label class="field"><span>主要层面</span><select name="kind" ${old?'disabled':''}>${Object.entries(kinds).map(([k,v])=>`<option value="${k}" ${(old?.kind||'logic')===k?'selected':''}>${v}</option>`).join('')}</select></label><div class="field full"><span>可关联多个层面</span><div class="checkboxes">${Object.entries(kinds).map(([k,v])=>`<label><input type="checkbox" name="layers" value="${k}" ${(p.layers||[old?.kind||'logic']).includes(k)?'checked':''}> ${v}</label>`).join('')}</div></div>${field('body','定义、依据或总结',p.body,'textarea',true)}${field('source','来源',p.source||'用户补充','textarea',true)}<div class="field full"><span>适用市场（仅确认后用于推导）</span><div class="checkboxes">${['CN','US'].map(m=>`<label><input type="checkbox" name="market_scope" value="${m}" ${(p.market_scope||(old?['CN']:[selectedMarket])).includes(m)?'checked':''}>${m==='US'?'美股':'A股'}</label>`).join('')}</div></div>${field('evidence','证据说明或链接，每行一项',(p.evidence||[]).join('\n'),'textarea',true)}<label class="field inline full"><input type="checkbox" name="risk" ${p.usage==='risk'?'checked':''}><span>这是个人仓位 / 风险规则，确认后供计划模块引用</span></label></div>`;
   openEditor(old?'修订档案 · 新版本草稿':'新增档案',body,async form=>{
     const kind=old?.kind||form.get('kind'),layers=[...new Set([kind,...form.getAll('layers')])];
-    const payload={...(old?.payload||{}),title:form.get('title'),body:form.get('body'),layers,source:form.get('source'),usage:form.get('risk')?'risk':'general',evidence:String(form.get('evidence')||'').split('\n').map(x=>x.trim()).filter(Boolean)};
+    const payload={...(old?.payload||{}),analysis_market:old?.payload?.analysis_market||selectedMarket,market_scope:form.getAll('market_scope'),title:form.get('title'),body:form.get('body'),layers,source:form.get('source'),usage:form.get('risk')?'risk':'general',evidence:String(form.get('evidence')||'').split('\n').map(x=>x.trim()).filter(Boolean)};
     if(old)await api('/api/knowledge/'+old.id+'/revise','POST',{payload,expected_revision:old.revision});
     else await api('/api/knowledge','POST',{kind,payload});
     view='knowledge';toast('档案草稿已保存。');
@@ -308,12 +329,13 @@ function executionForm(ref='') {
   const body=`<p class="form-note">这里只记录你实际操作或观察的事实，不会发送买卖委托。时间按北京时间填写。</p><div class="fields"><label class="field full"><span>关联计划版本</span><select name="plan_ref"><option value="">未关联计划（买卖会标注计划外）</option>${choices.map(x=>`<option value="${esc(x.ref)}" ${ref===x.ref?'selected':''}>${esc(x.payload.name)} / 第${x.revision}版 / ${esc(statuses[x.status])}</option>`).join('')}</select></label>${field('asset_id','实际品种ID；说明记录可填分析标的',p.execution_asset_id||p.asset_id||'')}<label class="field"><span>记录类型</span><select name="action"><option value="note">观察或说明（没有买卖）</option><option value="buy">实际买入回填</option><option value="sell">实际卖出回填</option></select></label>${field('occurred_at','实际发生时间 / 北京时间',localDateTime(),'datetime-local')}${field('price','成交价（可空）','','number')}${field('quantity','数量（可空）','','number')}${field('amount','金额（可空）','','number')}${field('note','事实说明与执行情况','','textarea',true)}</div>`;
   openEditor('回填实际记录',body,async form=>{
     const dt=String(form.get('occurred_at')||'');
-    const body={plan_ref:form.get('plan_ref')||null,asset_id:form.get('asset_id'),action:form.get('action'),occurred_at:dt+(dt.length===16?':00':'')+'+08:00',price:form.get('price')||null,quantity:form.get('quantity')||null,amount:form.get('amount')||null,note:form.get('note'),recorded_by:'翔宇'};
+    const body={analysis_market:selectedMarket,plan_ref:form.get('plan_ref')||null,asset_id:form.get('asset_id'),action:form.get('action'),occurred_at:dt+(dt.length===16?':00':'')+'+08:00',price:form.get('price')||null,quantity:form.get('quantity')||null,amount:form.get('amount')||null,note:form.get('note'),recorded_by:'翔宇'};
     await api('/api/executions','POST',body);view='plans';toast('回填记录已保存。');
   });
 }
 
 async function action(target) {
+  if(await usAction(target))return;
   if(target.dataset.action==='card-period'){
     const id=target.dataset.id,period=target.dataset.period,item=factItem(id);
     if(!item||!['daily','weekly'].includes(period))return;
@@ -336,7 +358,7 @@ async function action(target) {
   }
   const name=target.dataset.action,id=target.dataset.id;
   if(name==='close-dialog'){$('#editor').close();return;}
-  if(name==='run'){const r=await api('/api/run','POST',{});watchJob(r.job_id);await loadState();return;}
+  if(name==='run'){const r=await api('/api/run','POST',{market:selectedMarket});watchJob(r.job_id);await loadState();return;}
   if(name==='cancel-run'){await api('/api/cancel','POST',{});toast('已请求停止，正在保存本轮状态。');return;}
   if(name==='report'){if(currentRun)window.open('/api/runs/'+encodeURIComponent(currentRun.id)+'/report','_blank','noopener');return;}
   if(name==='candidate-detail'){candidateDetail(id);return;}
@@ -387,6 +409,13 @@ document.addEventListener('click',async event=>{
 document.addEventListener('change',async event=>{
   const target=event.target;
   try{
+    if(target.id==='market-select'){
+      selectedMarket=target.value;try{localStorage.setItem('p03.market',selectedMarket);}catch(_){}
+      currentRun=null;followLatest=true;stateSignature='';state={knowledge:[],confirmed_knowledge:[],plans:[],confirmed_plans:[],executions:[],reviews:[],runs:[],trash:[]};
+      render();
+      while(loading)await new Promise(resolve=>setTimeout(resolve,50));
+      await loadState(true);return;
+    }
     if(target.dataset.maId){
       const id=target.dataset.maId,p=Number(target.dataset.maPeriod),item=factItem(id);if(!item||![5,20,60,120].includes(p))return;
       const selected=new Set(displayMAs(id));target.checked?selected.add(p):selected.delete(p);chartMaChoices[id]=[...selected].sort((a,b)=>a-b);
@@ -396,7 +425,8 @@ document.addEventListener('change',async event=>{
       const c=await api('/api/config');if(!c.config)throw new Error('请先修复配置。');c.config.auto_refresh=target.checked;await api('/api/config','PUT',{config:c.config});configInfo=c;await loadState(true);
     }else if(target.id==='run-select'){
       followLatest=target.value==='latest';const id=followLatest?state.latest_report_id:target.value;
-      if(id)currentRun=await api('/api/runs/'+encodeURIComponent(id));render();
+      const requestedMarket=selectedMarket;
+      if(id){const chosen=await api('/api/runs/'+encodeURIComponent(id));if(requestedMarket!==selectedMarket)return;currentRun=chosen;}render();
     }
     else if(target.id==='knowledge-filter'){knowledgeFilter=target.value;render();}
     else if(target.id==='import-file'){

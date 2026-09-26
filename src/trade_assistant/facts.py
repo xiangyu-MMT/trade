@@ -10,6 +10,10 @@ from .volume_price import volume_price, turnover_summary, completed_asof, previo
 def compute(snapshot, config=None, market_history=None):
     if not isinstance(snapshot, dict) or snapshot.get("schema_version") != 1:
         raise AppError("validation_error", "快照版本或结构无效")
+    from .markets import market
+    if market(snapshot.get("analysis_market", "CN")) == "US":
+        from .us_facts import compute as us_compute
+        return us_compute(snapshot, market_history)
     config = config or snapshot["config_snapshot"]
     evidence, candidate_facts, watches = {}, [], []
     histories = snapshot.get("histories", {})
@@ -134,7 +138,7 @@ def compute(snapshot, config=None, market_history=None):
     for prefix in ("IF", "IM"):
         if prefix in basis:
             evidence["basis:" + prefix] = basis[prefix]
-    return {"schema_version": 1, "snapshot_id": snapshot["id"], "created_at": now(),
+    return {"schema_version": 1, "analysis_market": "CN", "snapshot_id": snapshot["id"], "created_at": now(),
             "asof": snapshot.get("asof"), "formula_version": FORMULA_VERSION, "calendar": market_calendar,
             "candidates": candidate_facts, "watch_indices": watches,
             "market": mf, "industries": snapshot.get("industries", []),

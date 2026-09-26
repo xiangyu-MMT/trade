@@ -11,6 +11,9 @@ STYLE = '''
 
 def render(run):
     facts = run.get("facts") or {}
+    if facts.get("analysis_market") == "US":
+        from .us_report import render as render_us
+        return render_us(run)
     reply = run.get("analysis") or {}
     ai, trace = reply.get("result") or {}, reply.get("trace") or {}
     market = facts.get("market") or {}
