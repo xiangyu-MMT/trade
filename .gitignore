@@ -1,0 +1,24 @@
+# Local application data, credentials and downloaded dependencies
+.local/
+.scratch/
+.workbuddy/
+.env
+.env.*
+!.env.example
+credentials.json
+*.sqlite
+*.sqlite3
+*.sqlite3-*
+*.db
+*.pem
+*.p12
+*.key
+
+# Generated files and development environments
+.DS_Store
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+node_modules/
