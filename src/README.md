@@ -4,7 +4,7 @@
 
 ## 启动
 
-需要 Python 3.8+；盈利资料解析使用 xlrd 2.0.2 和 pypdf 5.9.0，启动时会把缺少的依赖安装到项目 `.local/python-packages/`，不改系统 Python。AI 使用当前可用的 Codex CLI 配置，不限定认证类别；也可在页面配置 DeepSeek API。若以 npm 安装 Codex，按工作区约束使用 Node 22.x。
+需要 Python 3.8+ 和 Node 22.x；盈利资料解析使用 xlrd/pypdf，信用资料使用支持现代TLS的curl_cffi。启动时会把缺少的Python依赖安装到项目 `.local/python-packages/`，全市场历史解码组件装到`.local/parquet-runtime/`，不改系统Python。AI使用当前可用的Codex CLI配置，也可在页面配置DeepSeek API。
 
 - Mac：双击项目根的 `启动交易助手.command`。
 - Windows：双击 `启动交易助手.cmd`，需要可用的 Python 与 Codex。Windows 尚未在本机实测，应由小步在实际设备完成正式验证。
@@ -176,3 +176,14 @@ python3 projects/P03-trade/src/trade.py collect --market US --output us-snapshot
 - 首次读取最近报告及4个历史季度报告，原文件与解析结果缓存；数据会在后续“更新分析”时自动获取，旧轮次保持原状。
 - 首次启动会补齐解析依赖；也可提前运行 `python3 projects/P03-trade/src/trade.py setup`。Mac/Windows沿用原入口，依赖版本在 `src/requirements.txt`。
 - 本节更新I6中EPS/净利润率“仍缺自动来源”的说明。实际违约、可靠IOPV与广度历史的其余限制继续以当前轮次显示为准。
+
+## I8 · 广度历史、实际违约与长期跨度
+
+- 中期/长期观察默认展开。长期图表保留实际完整跨度；EPS约10年、EPS同比约9年、GDP同比约7年，净利润率本次扩至2020Q1起的26个季度，约6.25年。图下列明起止日、年数和观测数；缺季度断线，不补零。
+- NYSE＋NASDAQ涨跌历史由MarketParquet匿名近7天股票日线，与Nasdaq Trader当前证券目录匹配后重建。用户已选择无需登录路径；当前窗口有5个日线文件，形成9月22～25的4个可比交易日，之后依本地快照积累。
+- 这条历史按当前普通股/ADR目录重建，存在分类、缺报价及上市/退市覆盖偏差；没有拿NASDAQ单市场或几只ETF代替两市场合计，也不与旧快照口径拼接。全量个股只用于程序计算，不进入AI输入。
+- 美国实际违约接入Fitch公开、可匿名读取的评论，标题明确为“美国高收益企业债实际违约率”，TTM/月末口径。当前覆盖2026年5～7月，来源发布日期独立显示；贷款/私募信用违约率、CLO和预测区间不作替代。
+- 使用Fitch网页同源公开只读GraphQL，检查Anonymous/Free/Public访问类别；现代TLS请求保持证书验证，不需账户或付费订阅。
+- Parquet解码使用Node22纯JS组件，版本固定于`src/parquet-package.json`。源文件和解析缓存只存本地，不随公开Git仓库上传。
+
+本节更新此前的实际违约缺口和“仅本地单日广度”说明。数据仍按各来源实际时点展示，可靠实时IOPV等其他限制保持可见。Windows仍待实际设备验证。

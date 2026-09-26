@@ -104,8 +104,16 @@ class USMarket:
 
     def breadth(self):
         # Only aggregated counts leave this adapter; no full stock list enters AI.
+        historical_error = None
         try:
-            return self.nasdaq_breadth()
+            from .us_breadth import USBreadth
+            return USBreadth(self.http).collect()
+        except AppError as exc:
+            historical_error = exc.as_dict()
+        try:
+            result = self.nasdaq_breadth()
+            result["history_error"] = historical_error
+            return result
         except AppError as exc:
             first = exc.as_dict()
             try:

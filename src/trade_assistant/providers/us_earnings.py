@@ -15,7 +15,7 @@ from .us_market import metadata
 
 SHILLER = "https://shillerdata.com/"
 FACTSET = "https://advantage.factset.com/hubfs/Website/Resources%20Section/Research%20Desk/Earnings%20Insight/"
-PARSE_VERSION = "earnings-2"
+PARSE_VERSION = "earnings-3"
 MARGIN_DEF = "FactSet发布的标普500季度净利润率历史回顾值；保留该提供方盈利口径，不等同于Shiller EPS或经营利润率"
 EPS_DEF = "Shiller Data的名义E列，S&P四季度合计EPS；仅取季度末月份，排除月内插值，不使用通胀调整后的Real Earnings"
 
@@ -142,7 +142,7 @@ class USEarnings:
                                       "definition": "FactSet当前季度净利润率预估/混合值，单独观察，不并入历史实际曲线", "revision_note": "以该报告发布日期为准的当期预估"})
                     # Parse only the same paragraph's explicit historical comparisons.
                     context = text[match.end():match.end() + 850].split("At the sector level")[0]
-                    patterns = ((r"previous quarter[’']s (?:net profit )?margin of\s*" + numeric, -1, "previous_quarter"),
+                    patterns = ((r"previous quarter[’']s (?:record[- ]high )?(?:net profit )?margin of\s*" + numeric, -1, "previous_quarter"),
                                 (r"year[- ]ago (?:net profit )?margin of\s*" + numeric, -4, "year_ago_quarter"))
                     for rule, offset, basis in patterns:
                         found = re.search(rule, context, re.I)
@@ -170,7 +170,7 @@ class USEarnings:
         today = date.today()
         current_quarter = (today.month - 1) // 3 + 1
         targets = []
-        for offset in range(5):
+        for offset in range(25):
             year, quarter = quarter_shift(today.year, current_quarter, -offset)
             end = min(today, date.fromisoformat(quarter_end(year, quarter)))
             targets.append(end - timedelta(days=(end.weekday()-4) % 7))
@@ -202,6 +202,9 @@ class USEarnings:
             warnings.append("部分历史周报不可用；仅绘制实际取得季度")
         if any(x.get("cache_stale") for x in reports):
             warnings.append("部分周报使用历史缓存")
+        span = (date.fromisoformat(rows[-1]["date"]) - date.fromisoformat(rows[0]["date"])).days / 365.2425
+        if span < 5:
+            warnings.append("实际取得的净利润率历史不足5年，需要继续补充来源")
         return {"symbol": "SP500_NET_MARGIN", "name": "标普500净利润率", "unit": "%", "frequency": "季度", "period": "单季度 · FactSet发布口径",
                 "rows": rows, "vintages": vintages, "forecasts": newest["forecasts"], "value": rows[-1]["value"], "asof": rows[-1]["date"],
                 "definition": MARGIN_DEF, "published_at": newest["published_at"], "source": newest["source"], "fetched_at": newest["fetched_at"],

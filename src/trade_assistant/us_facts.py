@@ -155,9 +155,24 @@ def compute(snapshot, breadth_history=None):
         for candidate in candidates:
             if candidate["asset_id"] == ident:
                 candidate["execution_asset"] = {"asset_id": row["asset_id"], "name": row["name"], "execution_market": "CN", "pairing_ref": row["pairing_ref"]}
-    macro = snapshot.get("macro", [])
-    for x in macro:
-        evidence["macro:" + x["symbol"]] = {**x, "rows": x.get("rows", [])[-24:]}
+    macro = []
+    for original in snapshot.get("macro", []):
+        x = dict(original)
+        dates = sorted({r["date"] for r in x.get("rows", []) if r.get("value") is not None})
+        if dates:
+            x["history_start"], x["history_end"] = dates[0], dates[-1]
+            x["history_years"] = round((date.fromisoformat(dates[-1]) - date.fromisoformat(dates[0])).days / 365.2425, 2)
+            x["history_points"] = len(dates)
+            actual = [r for r in x.get("rows", []) if number(r.get("value")) is not None]
+            if actual:
+                low, high = min(actual, key=lambda r: r["value"]), max(actual, key=lambda r: r["value"])
+                x["history_summary"] = {"first": {k: actual[0].get(k) for k in ("date", "value")},
+                                        "last": {k: actual[-1].get(k) for k in ("date", "value")},
+                                        "min": {k: low.get(k) for k in ("date", "value")},
+                                        "max": {k: high.get(k) for k in ("date", "value")}}
+        macro.append(x)
+        evidence["macro:" + x["symbol"]] = {k: v for k, v in x.items() if k not in ("rows", "vintages", "attempts")}
+        evidence["macro:" + x["symbol"]]["rows"] = x.get("rows", [])[-24:]
     asof = snapshot.get("asof")
     calendar = session_info(asof)
     evidence["market:calendar"] = calendar

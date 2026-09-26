@@ -13,7 +13,7 @@
 
 ## 快速启动
 
-环境：Python 3.8+，可联网；使用 Codex 时需本机已有可用的 Codex CLI。DeepSeek 通过页面独立配置，不需要把密钥写进代码。
+环境：Python 3.8+、Node 22.x，可联网；Node用于全市场历史文件解析。使用 Codex 时需本机已有可用的 Codex CLI。DeepSeek 通过页面独立配置，不需要把密钥写进代码。
 
 克隆本仓库后，在仓库根目录运行：
 

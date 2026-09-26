@@ -1,6 +1,7 @@
 import base64
 import gzip
 import hashlib
+import importlib
 import json
 import threading
 import time
@@ -27,10 +28,11 @@ class HttpClient:
         with self.lock:
             self.attempts.append(row)
 
-    def get(self, url, params=None, encoding="utf-8", ttl=0, referer=None, stale=False, user_agent=None):
+    def get(self, url, params=None, encoding="utf-8", ttl=0, referer=None, stale=False, user_agent=None, transport=None, json_body=None, extra_headers=None):
         if params:
             url += ("&" if "?" in url else "?") + urllib.parse.urlencode(params, safe=",:!")
-        key = hashlib.sha256(url.encode()).hexdigest()
+        request_body = json.dumps(json_body, sort_keys=True).encode() if json_body is not None else None
+        key = hashlib.sha256(url.encode() + (b"\n" + request_body if request_body is not None else b"")).hexdigest()
         cache_path = self.cache / (key + ".json")
         cached = None
         try:
@@ -56,15 +58,31 @@ class HttpClient:
             headers = {"User-Agent": ("Python-urllib/" + urllib.request.__version__) if user_agent == "stdlib" else (user_agent or "Mozilla/5.0"), "Accept-Encoding": "identity"}
             if referer:
                 headers["Referer"] = referer
+            if extra_headers:
+                headers.update(extra_headers)
+            if request_body is not None:
+                headers["Content-Type"] = "application/json"
             try:
-                request = urllib.request.Request(url, headers=headers)
+                request = urllib.request.Request(url, headers=headers, data=request_body)
                 with self.gate:
-                    with urllib.request.urlopen(request, timeout=min(self.timeout, remaining)) as response:
-                        body = response.read(12 * 1024 * 1024 + 1)
-                        if len(body) > 12 * 1024 * 1024:
-                            raise ValueError("单次响应超过 12MB")
-                        if response.headers.get("Content-Encoding") == "gzip":
-                            body = gzip.decompress(body)
+                    if transport == "curl":
+                        from .dependencies import load
+                        try:
+                            load("curl_cffi")
+                            response = importlib.import_module("curl_cffi.requests").request("POST" if request_body is not None else "GET", url,
+                                headers=headers, data=request_body, timeout=min(self.timeout, remaining), verify=True)
+                            if response.status_code >= 400:
+                                raise ValueError("HTTP " + str(response.status_code))
+                            body = response.content
+                        except Exception as exc:
+                            raise OSError("现代TLS请求失败：" + str(exc)) from exc
+                    else:
+                        with urllib.request.urlopen(request, timeout=min(self.timeout, remaining)) as response:
+                            body = response.read(12 * 1024 * 1024 + 1)
+                            if response.headers.get("Content-Encoding") == "gzip":
+                                body = gzip.decompress(body)
+                    if len(body) > 12 * 1024 * 1024:
+                        raise ValueError("单次响应超过 12MB")
                 fetched = now()
                 record = {"body": base64.b64encode(body).decode("ascii"), "source": url,
                           "fetched_at": fetched, "saved_epoch": time.time()}

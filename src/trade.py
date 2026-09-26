@@ -41,7 +41,7 @@ def main():
             from trade_assistant.dependencies import ensure
             ensure()
         if args.command == "setup":
-            print(dumps({"ready": True, "parsers": ["xlrd", "pypdf"]}))
+            print(dumps({"ready": True, "parsers": ["xlrd", "pypdf", "curl_cffi"], "parquet": "Node22 + hyparquet"}))
             return 0
         if args.command == "collect":
             from trade_assistant.collector import Collector

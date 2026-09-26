@@ -10,6 +10,7 @@ from .macro import Macro
 from .us_market import USMarket, metadata
 from ..util import AppError, number, now
 from .us_earnings import USEarnings
+from .us_credit import USCredit
 
 DEFINITIONS = {
     "WALCL": ("联储总资产", "百万美元", "周三", "H.4.1总资产，周三时点，非周均值"),
@@ -145,6 +146,7 @@ class USMacro:
         jobs = {}
         earnings = USEarnings(self.http)
         jobs["标普盈利自动获取"] = earnings.collect
+        jobs["美国高收益企业债实际违约"] = lambda: {"US_DEFAULT_RATE": USCredit(self.http).collect()}
         if not all(x in output for x in ("WALCL", "WDTGAL")):
             jobs["联储H.4.1"] = self.h41
         if not all(x in output for x in ("DGS10", "T10Y2Y")):
@@ -174,13 +176,6 @@ class USMacro:
                 except (AppError, ValueError, TypeError, KeyError) as exc:
                     self.coverage.append({"group": name, "status": "missing", "detail": str(exc)})
         self.coverage.extend(earnings.coverage)
-        for name, url in (("企业实际违约资料", "https://www.spglobal.com/ratings/en/research/credit-market-research"),):
-            try:
-                response = self.http.get(url, ttl=86400, stale=True, encoding=None)
-                detail = "公开资料已访问，但未取得可验证的结构化实际序列；请从配置补充带来源、样本与发布日期的观测"
-            except AppError as exc:
-                detail = exc.message + "；补充资料入口：配置 us.observations"
-            self.coverage.append({"group": name, "status": "missing", "detail": detail, "source": url})
         for symbol, name in (("US_DEFAULT_RATE", "美国企业实际违约率"), ("SP500_EPS", "标普500已报告EPS"), ("SP500_NET_MARGIN", "标普500净利润率")):
             points = [x for x in observations if x["symbol"] == symbol]
             if points:

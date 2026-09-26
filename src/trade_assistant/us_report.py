@@ -1,5 +1,7 @@
 """US charts shared with the application and a self-contained historical report."""
 from html import escape
+import calendar
+from datetime import date
 
 from .charts import candles, curves, fmt
 from .presentation import select
@@ -17,7 +19,18 @@ def chart_data(facts):
             latest = {}
             for row in sorted(rows, key=lambda x: (x["date"], str(x.get("published_at") or ""))):
                 latest[row["date"]] = row
-            plots[item["symbol"]] = curves([latest[d] for d in sorted(latest)][-120:], [("value", item["name"], "#547fa2")], item.get("unit", ""))
+            plotted = [latest[d] for d in sorted(latest)]
+            if item["symbol"] in ("SP500_EPS", "SP500_EPS_YOY", "SP500_NET_MARGIN", "GDP_YOY") and plotted:
+                quarters = {(date.fromisoformat(r["date"]).year * 4 + (date.fromisoformat(r["date"]).month - 1) // 3): r for r in plotted}
+                series_rows = []
+                for index in range(min(quarters), max(quarters) + 1):
+                    year, q = divmod(index, 4)
+                    month = q * 3 + 3
+                    series_rows.append(quarters.get(index, {"date": date(year, month, calendar.monthrange(year, month)[1]).isoformat(), "value": None}))
+                plotted = series_rows
+            else:
+                plotted = plotted[-120:]
+            plots[item["symbol"]] = curves(plotted, [("value", item["name"], "#547fa2")], item.get("unit", ""))
     return plots
 
 

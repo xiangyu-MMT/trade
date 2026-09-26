@@ -28,3 +28,5 @@ us_context.paired_etfs只对应三指数，premium.basis_type=published_nav时�
 缺实际盈利/违约或广度覆盖时，说明对结论的限制。未确认模式不能引用为已掌握规则，可提出待确认草稿；不擅自制定数值买卖阈值。
 
 美股盈利资料：SP500_EPS若period为TTM，是Shiller来源名义四季度合计EPS，仅取季度末观测，不是单季度或通胀调整后EPS。SP500_NET_MARGIN为FactSet已发布历史季度净利润率，和EPS统计口径不同；不据两者直接反推销售。forecasts/vintages分别为预估与发布版本，不能当新增实际季度或连入历史实际曲线。先比较同口径同比和来源日期。
+
+US_DEFAULT_RATE如样本为Fitch美国高收益企业债市场，只表示该样本TTM实际违约率；不得称为全部企业或贷款/私募信用违约率，也不得把预测区间代入实际值。NYSE＋NASDAQ历史若标记current-roster重建，说明按当前证券目录比较历史收盘，具有覆盖与存续偏差；不能宣称取得完整历史目录。较短的匿名历史不支持长期广度判断。长期指标history_years/history_start/history_end给出实际可用跨度；引用多年度结论须与其相符。

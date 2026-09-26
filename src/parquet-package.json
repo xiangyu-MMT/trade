@@ -1,0 +1,11 @@
+{
+  "name": "p03-parquet-runtime",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {"node": ">=22 <23"},
+  "dependencies": {
+    "hyparquet": "1.31.1",
+    "hyparquet-compressors": "1.1.2"
+  }
+}

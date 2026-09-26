@@ -48,7 +48,7 @@ class USCollector:
                         self.coverage.extend(value["coverage"])
                     elif key == "breadth":
                         breadth = value
-                        self.coverage.append({"group": "NYSE＋NASDAQ广度", "status": "ok" if value.get("complete") else "partial", "detail": value["definition"] + "；历史由真实观察逐日积累"})
+                        self.coverage.append({"group": "NYSE＋NASDAQ广度", "status": "ok" if value.get("complete") else "partial", "detail": value["definition"] + "；本次取得%s个可比交易日，后续继续积累" % len(value.get("rows", []))})
                     else:
                         histories[key] = value
                         info = session_info(value.get("asof"))
