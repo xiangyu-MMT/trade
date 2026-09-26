@@ -1,0 +1,54 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>trade · 美股技术设计 D1</title><style>body{background:#f5f7f4;color:#233a32;font:15px/1.8 system-ui;margin:0}main{max-width:1060px;margin:auto;padding:42px 22px}h1{font-size:32px}h2{font-size:20px}article{background:white;border:1px solid #dbe5dc;border-radius:16px;padding:24px;margin:18px 0}a{color:#28664c}pre{white-space:pre-wrap;font:inherit;font-size:14px}small{color:#627c6b}.flow{padding:18px;background:#eaf2e7;border-radius:12px}</style><main><small>P03 / TASK-010～015 / D1</small><h1>把美股接进 trade</h1><p>美国市场独立推导；三指数、七行业、广度与宏观；境内ETF用于对应指数的执行观察。</p><div class="flow">市场归属 → 行情与宏观 → 固定ETF与溢价 → 档案与AI → 双市场页面</div><p>你已授权“技术设计后直接编码”。六份D1现已完成，接下来按这些接口实现。正式测试仍由小步负责。</p><article><h2>TASK-010 · 多市场归属与配置存档基础</h2><a href="../04-技术设计/TASK-010-方案.md">完整方案 D1</a><details><summary>查看技术选择与边界</summary><pre>### 结构与接口
+增加 markets.py，唯一市场值为 CN、US；旧资料没有字段时解释为 CN，不重写历史对象。配置仍兼容 schema_version=1，增加 active_market、scheduled_markets、us。手动运行显式传 market，定时按 scheduled_markets 顺序运行，操作锁共用。
+运行 metadata/snapshot/facts 各携带 analysis_market；新计划、执行、复盘 payload 带 analysis_market、execution_market。档案 payload.market_scope 为非空市场列表；缺省旧档案仅 CN。列表接受市场过滤，非法值拒绝。
+SQLite 不改旧表和旧对象编号，固定配对作为 pairing 版本对象保存；新增版本不覆盖已有记录。导出 archive_version=3，导入兼容1/2/3，检查市场、对象引用、配对引用、运行归属冲突，失败事务回滚。
+### 配置与迁移
+us 独立含 indices/sectors、technical（MA20/60、OBV、5/20量能窗口）、补充观察资料入口；图表 MA 配置与此无关。新增默认配置合并不覆盖现有A股字段；AI配置全市场共用。配对存档不通过修改普通配置JSON静默改码。
+### 文件与影响
+markets.py、config.py、store.py、knowledge.py、plans.py、engine.py、server.py及默认配置；A股旧快照和档案继续按原算法读取。
+### 错误与恢复
+未知市场/跨市场引用/配对不存在返回具体400/409；选择市场仅切换视图，不改变历史。迁移保留回收站和AI原始记录，凭据继续独立保存。</pre></details></article><article><h2>TASK-011 · 美股行情行业与全市场广度</h2><a href="../04-技术设计/TASK-011-方案.md">完整方案 D1</a><details><summary>查看技术选择与边界</summary><pre>### 数据源与身份
+新增 providers/us_market.py、us_time.py、us_collector.py。三指数固定身份 us:DJI→^DJI、us:NDX→^NDX、us:SPX→^GSPC。Yahoo chart 主源，另一chart域名及Stooq日线作为可识别的后备；失败保留真实缓存和来源，不拼接复权体系。
+七行业选美国本土ETF观察代理 XLF/XLV/XLP/XLY/SOXX/XSW/XLI，注明其跟踪范围（部分覆盖大型股或含美国上市海外企业）；软件XSW涵盖软件与IT服务而非整个科技板块。默认仅这七项。官方身份链接随配置保存。
+指数原始成交量定义不明时不用于OBV；DIA/QQQ/SPY分别作为美国量能参考。代理用自己的价格/量计算量价与OBV，不用境内ETF，也不伪造指数原生成交量。图表量柱注明代理。
+纽约金GC=F保留Yahoo近月连续观察身份、期货币种及换月影响；不称现货、不保证已后复权连续合约。未核实换月算法明确写入限制。
+### 广度
+Nasdaq公开screener按nyse、nasdaq分别完整抓取，逐条仅在程序中聚合，引用目录与前收差值字段；普通股/ADR、基金/优先股/权证边界通过Nasdaq证券目录和名称分类校验。无法严格识别则保留源实际范围及未识别数量，完整股票范围不作虚假保证。WSJ公开Market Diary为后备，NYSE与Nasdaq单独取数，保留包含的其他证券说明。不同scope_id不拼接为一条同口径线。
+历史优先尝试公开日记历史；没有完整免费历史则从真实快照按交易日期积累，盘中点标形成中；单点显示点，不补零或捏造历史。支持有出处的历史导入。
+### 时间与格式
+美国东部时间按DST处理；内置2026–2028官方休市/13点早收日，其他年度标未核实；日线日期取交易所本地日期，source_asof/fetched_at分开。周线按美国交易周聚合，未完成周标记；COMEX按提供方会话日期、形成状态保守处理，不套用A股15点。
+history={bars,source,sources,asof,currency,timezone,volume_unit,adjustment,identity,cache_stale}；breadth={scope_id,asof,rows,coverage,definition}。单源限时、总预算、并发4，取消和错误保留。</pre></details></article><article><h2>TASK-012 · 美国宏观信用与盈利增长观察</h2><a href="../04-技术设计/TASK-012-方案.md">完整方案 D1</a><details><summary>查看技术选择与边界</summary><pre>### 接口与数据源
+新增 providers/us_macro.py，结果统一series={symbol,name,unit,frequency,rows,date/asof,source,fetched_at,published_at,revision_note,definition,status}。FRED公共CSV优先；可用官方文本/网页近期发布、纽约联储SOFR/ON RRP、联储H.15/H.4.1及财政部实际/名义收益率作为可核对后备。数据源实际失败和替代范围写coverage。
+WALCL、WDTGAL均百万美元；RRPONTSYD十亿美元。只取三者共同的周三，转十亿美元后计算 WALCL/1000 − WDTGAL/1000 − RRPONTSYD，不前填不同日期。保留分量和单位，称流动性参考，不称可投资现金。
+SOFR、T10Y2Y、DFII10、DGS10及DXY各自成序列；DXY来自美元指数报价，不用广义贸易加权美元替换。HY OAS百分数及基点说明，独立于实际违约。
+### 盈利与违约
+尝试S&amp;P官方盈利表及公开评级资料。解析须能识别已实际/预测、样本和期间；不能稳定解析不从新闻片段猜数。补充资料入口支持带来源、发布日期、观测日、地区、样本、实际/预测、版本说明的结构化观察；按日期和发布版本保存，不覆盖历史快照。开放式URL只接收公开HTTPS、无凭据的数据。
+EPS以标普500已报告EPS为起点，可复算同比（季度同比或明确TTM同比）；利润率保持净利润率/经营利润率区分，不更名。实际违约必须注明发行人/债券/贷款、地区及期间；信用利差、预测、全球范围不能冒称美国企业债实际违约。
+GDPC1为实际GDP季度水平；同季度上年同比=(本期/上年同期−1)*100，缺任一季度不计算。FRED当前版本不是历史实时可得版本，标修订事实，不承诺无前视回测。
+### 缺口行为
+无法免费取得的目标保留缺口、尝试源、补充入口和对AI判断限制；未知发布日期为null，禁止以抓取日冒充发布日。图表不补零、不把低频值称实时。AI只收最近摘要和有限历史。</pre></details></article><article><h2>TASK-013 · 境内美股指数ETF固定配对与溢价</h2><a href="../04-技术设计/TASK-013-方案.md">完整方案 D1</a><details><summary>查看技术选择与边界</summary><pre>### 选择与存档
+新增 etf_pairing.py；全基金目录筛出境内场内ETF（剔除联接/LOF/非对应目标），结合基金概况“跟踪标的”校验三指数身份。名称模糊匹配只用于发现，不足以完成绑定。
+首次对每指数全部已发现且已核实的合格品种，用同一最近20个完整境内交易日的日成交金额计算均值。取数使用东方财富原始成交金额或同口径免费后备；不以volume×close估计成交额。缺历史/停牌/未核实身份的品种保留排除理由；若可能影响最大者判断则不自动宣称全范围最大。
+成功后作为pairing版本对象记录：index_id、ETF code/name、analysis_market US、execution_market CN、20日窗口、逐品种金额与覆盖、选定时间与source、policy。日常只读取绑定；只有显式API“重新选择/指定确认”才产生新版本。旧轮次和计划保存pairing_ref。
+### 行情与溢价
+ETF日线/报价用现有境内适配器，行情日期按CN。净值优先可核实IOPV及其源时间；否则已公布单位净值（人民币），明确“相对已公布净值偏离”并显示净值日、报价日及跨市场时差。premium_pct=(CNYprice/CNYbasis−1)*100。无基准/非正数/币种不一致/未知时点返回null与原因，不填0。
+不把美元指数点位与人民币基金净值直接相除；不以涨跌幅粗算实时公平价值。该轮ETF量价、溢价事实与指数技术分开，AI能说明方向强但工具溢价不利。阈值只由已确认知识给出，初期不自设止买线。
+### API与界面
+GET /api/us/pairings读取当前及历史；POST /api/us/pairings/preview取得可审阅筛选证据；POST /api/us/pairings/bind带预览/目标版本明确确认后绑定。首轮自动择优只在空绑定且筛选完整时执行。使用共同操作锁；JSON迁移保留版本和引用。七行业不进入该接口。</pre></details></article><article><h2>TASK-014 · 美股档案量价事实与AI推导</h2><a href="../04-技术设计/TASK-014-方案.md">完整方案 D1</a><details><summary>查看技术选择与边界</summary><pre>### 知识与参数
+新增默认美股知识文件；仅用户已表达的短中长期基本面框架和MA/OBV/量价偏好存为已确认原话（注明来源），具体AI硬件、软件久期、防御等模式定义先为draft，不自动设置胜率。所有新建议携market_scope=[US]；确认版本后才进入推导。
+美股技术独立模块 us_facts.py：默认MA20/60（日线窗口，用作描述不是交易阈值），OBV首值0、以自身收盘变化加减自身量，5/20完整交易日均量及同品种回报/回撤；参数可配。展示MA5/20/60/120默认20与分析分离。周线美国日历辅助，指数价格结构和美国ETF量能代理分别保存证据。
+### AI输入输出
+沿用AIRouter/schema，analysis_market及市场专用requirements进入输入。US分支不发送A股行业/融资/涨停/期货基差，不发送股票全目录；只三指数七行业、聚合广度、宏观摘要、配对溢价和本市场已确认档案。
+通用提示词分市场约束；不把A股成交量主导解释套到美股，信用/盈利数据不足时明确冲突。排序只在有效候选集合，前三是相对强弱而非交易许可。无AI时改称技术参考排序，基于US自己的价格/OBV事实而非复用A股量能优先排序键。
+继续校验对象/事实/知识引用、全集排序、重复/越界/缺逻辑的candidate。未确认模式只能文字假设或草稿提议，不能mode_refs引用。
+### 计划与复盘
+计划按原轮次analysis_market和pairing_ref，执行场所另记CN/US；默认观察，风险规则不足不编仓位。手工计划支持明确市场；回填与复盘继承原计划、版本和品种，跨市场不匹配拒绝/清楚标偏差。AI失败保留事实及尝试记录，Codex/DeepSeek后备不变。</pre></details></article><article><h2>TASK-015 · 美股概览图表与双市场运行整合</h2><a href="../04-技术设计/TASK-015-方案.md">完整方案 D1</a><details><summary>查看技术选择与边界</summary><pre>### 页面
+侧边栏增加A股/美股选择，视图市场独立于定时市场配置。US概览：三句点评/结构/模式；三指数K线（每个下方对应境内ETF图、代码、溢价基准日期）；涨跌曲线与纽约金；短期流动性、中期利率信用、长期盈利增长折叠图表；候选七个美国行业保持范围与代理标签。只综合前三突出展示，全关注清单可展开。无数据不伪造图线。
+复用现有SVG K线与日周切换，显示均线默认20，选择不会调模型或改分析参数；US指数量柱若用美国ETF代理必须清楚标注，ETF卡与指数分开。
+图表与说明配套少量文字，来源/局限折叠；错误信息不遮住此前可用结果。档案、计划、回收站、历史按所选市场过滤，旧引用仍能定位。
+### API/运行
+/api/state?market=CN|US、/api/runs?market=；POST /api/run带market。状态显示正在处理哪个市场；scheduled_markets默认[CN]且auto_refresh每次启动false，可明确选择CN/US/两者。单操作锁顺序执行，睡眠醒来仅补一轮，不开无限后台数据进程。
+CLI collect/run增加 --market；compute按快照市场分发。导出报告根据facts市场使用report_us.py，自包含浅色无CDN，保存当时配对/事实/来源，不跟随当前配置改变。
+### 运行及交付
+保持标准库优先，Python3.8可运行，时区提供兼容实现；现有Mac和Windows薄入口继续使用。交付只描述实际启动/接口/真实取数/模型调用/报告/迁移主路径自检；正式测试交小步，Windows无实机不报通过。
+自检专用本地目录与真实用户.local隔离，避免改用户档案与计划；如需重启已有服务先核实进程，不能终止未知后台进程。</pre></details></article><article><h2>数据覆盖必须如实表达</h2><p>已验证三指数源与Nasdaq目录可读。FRED下载及标普盈利表当前存在访问失败，将接入免费后备与结构化补充入口，保留实际缺口。新模式定义仍先为草稿，确认后用于判断。</p></article></main></html>
