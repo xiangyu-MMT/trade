@@ -72,3 +72,26 @@ A股/美股为两个相邻按钮，aria-pressed显示当前项；点击只按原
 Codex使用真实公开文件核实解析结果，做页面按钮和数据展示主路径自检，检查AI输入已有盈利证据；正式用例/测试执行不由Codex编写。新实现提交后在任务卡记录实际哈希与剩余边界。
 
 来源：Shiller数据定义 https://shillerdata.com/ ；FactSet公开报告 https://insight.factset.com/topic/earnings/page/1 ；PDF解析库 https://pypdf.readthedocs.io/en/5.9.0/user/extract-text.html 。
+## D3 · I8：历史曲线、实际违约与长期跨度
+
+- 本轮依据：翔宇“NYSE＋NASDAQ 涨跌家数 不是曲线啊；中期 · 利率、美元与信用这种默认别折叠，我每次看还要手动打开；美国企业债实际违约没数据；长期 · 盈利与经济增长这种长期数据，起码要看5年以上的吧。”
+- 已确认取舍：“先用无需登录的数据”。沿用本轮连续设计/实现授权处理反馈；不代签实现或测试。
+
+### 数据与口径
+
+1. 新增MarketParquet匿名近7天全美股票日线源，已核实2026-09-21～25文件可读取，每日约6500行。通过Nasdaq Trader当前NYSE/NASDAQ证券目录校验普通股/ADR，用相邻完整交易日收盘价比较逐日计算涨/跌/平/缺值；仅程序聚合，AI不接收全股明细。首个文件没有窗口内前收，因此目前合计曲线是9月22～25的4个点；后续自动积累。历史按当前目录重建，明确目录时点和可能的存续偏差，不冒称历史时点完整证券目录，不与原Nasdaq快照口径拼接。401表示超出匿名范围，正常停止该日期，不绕过登录。
+2. Nasdaq官方年度统计CSV可作为补充资料/质量核对；不能以Nasdaq独自冒充两市场合计。
+3. Fitch公开网站使用只读GraphQL getResearchItem；从LSTA合作栏目发现美国企业违约评论，读取公开Non-Rating Action Commentary，检查非Premium。字段仅title/发布日期/正文段落/访问类别；不请求账号、联系人或付费全文。只抽取明确HY/High Yield债券TTM实际率，贷款、私募信用、CLO和预测区间不代替。当前已核实2026-07实际2.8%、前月2.7%，其余月份按可解析来源补充。保留观测月、发布日期、样本与修订；标题明确美国高收益企业债。
+4. 净利润率采集从5份季度末周报扩至约25份，兼容旧文中的record-high等措辞。目标取得至少5年以上真实历史；EPS及GDP本已有更长跨度，图表统一显示实际起止时间与覆盖年数，缺季度断线，不插值。完整资料保存在快照，AI只收最近摘要及跨度，避免把全文/重复历史版本塞入输入。
+
+### 依赖与实现
+
+Parquet使用Node22的纯JS hyparquet1.31.1及hyparquet-compressors1.1.2，安装到.local/parquet-runtime/，由受限本地worker解码（限制文件/行数/列），不依赖外部CDN。试用的PyArrow在本机Big Sur无法加载，DuckDB本地编译已停止，二者不进入生产依赖。Fitch需要现代TLS，使用curl_cffi0.7.4；证书验证保持开启，延续网络超时/预算与缓存。启动/setup补齐依赖，Windows仍需实机验证。
+
+新增providers/us_breadth.py、providers/us_credit.py、parquet_worker.mjs及runtime包清单；调整依赖加载、HTTP客户端、US收集/事实、曲线和页面。中期/长期details默认open；年份跨度来自实际有效观测，不虚填日期。来源失败保留最后可用缓存及真实日期，旧轮次不改写。
+
+### 交付边界与自检
+
+Codex做真实文件/公开接口/页面主路径自检并保存证据，正式测试仍交小步。匿名广度不能承诺一年历史；用户已选择无需登录路径。信用指标是高收益企业债样本，不能称所有美国企业债；发布日期滞后明确展示。
+
+来源：Nasdaq目录与年度统计 https://nasdaqtrader.com/Trader.aspx?id=DailyMarketFiles ；MarketParquet免费范围 https://marketparquet.com/guides/free-historical-stock-data ；LSTA/Fitch公开评论入口 https://www.lsta.org/content/fitch-ratings-commentary-page/ 。
