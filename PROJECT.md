@@ -3,6 +3,7 @@
 - **项目编号**：P03
 - **建立日期**：2026-09-25
 - **项目背景**：完成一个交易辅助系统。
+- **GitHub**：[xiangyu-MMT/trade](https://github.com/xiangyu-MMT/trade)（公开仓库，main分支）；[发布记录](records/codex-GitHub发布记录.md)。
 - **当前状态**：I7反馈修复已提交ab3044d（0.2.1）；市场按钮与自动EPS/净利润率可用。最新美股轮次409044ff9ba4449c8d3c9e3b843bf0e9，Codex覆盖10/10；TASK-012/014/015待签收新实现。
 - **下一步**：翔宇审阅[本轮I7修复](outputs/codex-盈利修复-I7.html)并签收新提交，之后小步正式测试。
 
